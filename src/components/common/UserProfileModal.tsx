@@ -50,9 +50,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  // Android Success state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  React.useEffect(() => {
+    if (currentUser && isOpen) {
+      setName(currentUser.name || '');
+      setUsername(currentUser.username || '');
+      setPhone(currentUser.phone || '');
+      setAvatar(currentUser.avatar);
+      setShowPasswordSection(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordError('');
+    }
+  }, [currentUser, isOpen]);
 
   if (!isOpen || !currentUser) return null;
 

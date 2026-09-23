@@ -110,7 +110,7 @@ export interface Order {
   completedAt?: string;
   createdAt: string;
   notes?: string;
-  bookingSource: 'remote_web' | 'remote_mobile' | 'salon_tablet' | 'walk_in';
+  bookingSource: 'remote_web' | 'remote_mobile' | 'salon_tablet' | 'walk_in' | 'manager_manual';
 }
 
 export interface SalonTillInfo {

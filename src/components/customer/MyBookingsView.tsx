@@ -11,8 +11,10 @@ import {
   ShieldCheck, 
   CreditCard,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Printer
 } from 'lucide-react';
+import { printCustomerReceipt } from '../../utils/reportGenerator';
 
 interface MyBookingsViewProps {
   onOpenPaymentModal: (order: Order) => void;
@@ -23,7 +25,7 @@ export const MyBookingsView: React.FC<MyBookingsViewProps> = ({
   onOpenPaymentModal,
   onNavigateToServices
 }) => {
-  const { lang, orders, currentUser } = useSalonStore();
+  const { lang, orders, currentUser, tillDetails } = useSalonStore();
   const t = getTranslation(lang);
 
   // Filter orders for current user or show recent device orders
@@ -155,11 +157,21 @@ export const MyBookingsView: React.FC<MyBookingsViewProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => printCustomerReceipt(ord, tillDetails)}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
+                    title="Chapisha au Hifadhi Risiti kama PDF"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Risiti (PDF)</span>
+                  </button>
+
                   {ord.paymentMethod === 'mobile_money' && ord.status === 'pending_payment' && (
                     <button
                       type="button"
                       onClick={() => onOpenPaymentModal(ord)}
-                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md flex items-center space-x-1.5"
+                      className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md flex items-center space-x-1.5 cursor-pointer"
                     >
                       <Smartphone className="w-3.5 h-3.5" />
                       <span>Lipa / Thibitisha SMS</span>
@@ -170,7 +182,7 @@ export const MyBookingsView: React.FC<MyBookingsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onOpenPaymentModal(ord)}
-                      className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold text-xs hover:bg-amber-500/20"
+                      className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold text-xs hover:bg-amber-500/20 cursor-pointer"
                     >
                       Tazama Ushahidi wa SMS
                     </button>

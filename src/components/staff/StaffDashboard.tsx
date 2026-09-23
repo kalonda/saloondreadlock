@@ -16,9 +16,13 @@ import {
   Banknote,
   Sparkles,
   Calendar,
-  ArrowLeft
+  ArrowLeft,
+  Download,
+  Printer,
+  FileSpreadsheet
 } from 'lucide-react';
 import { AndroidSuccessModal } from '../common/AndroidSuccessModal';
+import { exportToCsv, printPdfReport } from '../../utils/reportGenerator';
 
 export interface StaffDashboardProps {
   activeScreen?: 'jobs' | 'walkin' | 'earnings';
@@ -167,6 +171,53 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     });
 
     setScreen('jobs');
+  };
+
+  const handleExportMyReport = (format: 'pdf' | 'csv' = 'pdf') => {
+    const periodLabelMap: Record<string, string> = {
+      today: 'Leo',
+      yesterday: 'Jana',
+      week: 'Wiki Hii',
+      month: 'Mwezi Huu',
+      custom: `${rangeFromDate} hadi ${rangeToDate}`,
+      all: 'Muda Wote'
+    };
+    const periodLabel = periodLabelMap[presetPeriod] || 'Leo';
+
+    if (format === 'csv') {
+      const headers = ['Msimbo wa Oda', 'Tarehe', 'Mteja', 'Huduma', 'Kiasi (TZS)'];
+      const rows = completedHistory.map(o => [
+        `#${o.bookingCode}`,
+        new Date(o.createdAt).toLocaleDateString('sw-TZ'),
+        o.customerName,
+        o.items.map(i => i.nameSw).join(', '),
+        o.totalAmount
+      ]);
+      exportToCsv(`Ripoti_Yangu_${activeStaff.name.replace(/[^a-zA-Z0-9]/g, '_')}_${periodLabel}`, headers, rows);
+    } else {
+      const rows = completedHistory.map(o => [
+        `#${o.bookingCode}`,
+        new Date(o.createdAt).toLocaleDateString('sw-TZ'),
+        o.customerName,
+        o.items.map(i => i.nameSw).join(', '),
+        formatCurrency(o.totalAmount)
+      ]);
+
+      printPdfReport({
+        title: `Ripoti Binafsi ya Kazi: ${activeStaff.name}`,
+        subtitle: `Kazi na mapato yaliyozalishwa katika kipindi cha ${periodLabel}`,
+        managerOrStaffName: activeStaff.name,
+        periodLabel,
+        stats: [
+          { label: 'Kazi Zilizokamilika', value: completedHistory.length },
+          { label: 'Mapato ya Kipindi', value: formatCurrency(totalPeriodEarned) },
+          { label: 'Mshahara wa Mwezi', value: formatCurrency(activeStaff.salary || 450000) }
+        ],
+        headers: ['Oda', 'Tarehe', 'Mteja', 'Huduma', 'Kiasi'],
+        rows,
+        footerNote: 'DREADLOCKS AND HAIR DRESSING SALOON • Ripoti ya Mhudumu'
+      });
+    }
   };
 
   return (
@@ -558,6 +609,26 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
                   }`}
                 >
                   {t.managerDashboard.filterAll}
+                </button>
+              </div>
+
+              {/* Action Export Buttons */}
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleExportMyReport('pdf')}
+                  className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center space-x-1 shadow cursor-pointer transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Pakua PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportMyReport('csv')}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center space-x-1 cursor-pointer transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Pakua CSV</span>
                 </button>
               </div>
             </div>

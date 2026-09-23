@@ -19,6 +19,7 @@ import {
   supabase, 
   syncProfileToSupabase, 
   syncOrderToSupabase, 
+  deleteOrderFromSupabase,
   fetchProfilesFromSupabase, 
   ensureManagerRegisteredInSupabase, 
   deleteProfileFromSupabase,
@@ -163,7 +164,7 @@ export const refreshAllFromSupabase = async () => {
     let changed = false;
 
     if (remoteProfiles && remoteProfiles.length > 0) {
-      const staffProfiles = remoteProfiles.filter(p => p.role === 'staff' || (p.role === 'manager' && p.email !== 'jeanclaudekalonda1@gmail.com'));
+      const staffProfiles = remoteProfiles.filter(p => p.role === 'staff' || p.role === 'manager');
       const customerProfiles = remoteProfiles.filter(p => p.role === 'customer');
       if (staffProfiles.length > 0) {
         globalStaff = staffProfiles;
@@ -173,18 +174,48 @@ export const refreshAllFromSupabase = async () => {
         globalRegisteredUsers = customerProfiles;
         changed = true;
       }
+
+      // Live sync currently logged-in user profile across devices
+      if (globalUser) {
+        const matched = remoteProfiles.find(
+          p => (p.id && p.id === globalUser?.id) ||
+               (p.username && p.username.toLowerCase() === globalUser?.username?.toLowerCase()) ||
+               (p.email && p.email.toLowerCase() === globalUser?.email?.toLowerCase())
+        );
+        if (matched) {
+          if (
+            matched.avatar !== globalUser.avatar ||
+            matched.name !== globalUser.name ||
+            matched.phone !== globalUser.phone ||
+            matched.role !== globalUser.role ||
+            matched.salary !== globalUser.salary ||
+            matched.specialization !== globalUser.specialization
+          ) {
+            globalUser = {
+              ...globalUser,
+              ...matched
+            };
+            changed = true;
+          }
+        }
+      }
+
+      // Live sync manager user profile
+      const matchedManager = remoteProfiles.find(
+        p => p.role === 'manager' && (
+          p.email === MANAGER_USER.email || 
+          p.username === MANAGER_USER.username ||
+          p.id === MANAGER_USER.id
+        )
+      );
+      if (matchedManager) {
+        Object.assign(MANAGER_USER, matchedManager);
+      }
     }
 
-    if (remoteOrders && remoteOrders.length > 0) {
-      // Merge remote orders with any existing local-only orders
-      const orderMap = new Map<string, Order>();
-      remoteOrders.forEach(o => orderMap.set(o.id, o));
-      globalOrders.forEach(o => {
-        if (!orderMap.has(o.id)) {
-          orderMap.set(o.id, o);
-        }
-      });
-      globalOrders = Array.from(orderMap.values()).sort(
+    if (remoteOrders && Array.isArray(remoteOrders)) {
+      // Direct remote source of truth for orders
+      globalOrders = remoteOrders.sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       changed = true;
@@ -581,6 +612,38 @@ export const salonStore = {
     notify();
   },
 
+  addOrder: (order: Order) => {
+    globalOrders = [order, ...globalOrders];
+    saveToLocalStorage();
+    syncOrderToSupabase(order);
+    notify();
+    return order;
+  },
+
+  updateOrder: (orderId: string, updates: Partial<Order>) => {
+    let updatedOrder: Order | null = null;
+    globalOrders = globalOrders.map(ord => {
+      if (ord.id === orderId) {
+        updatedOrder = { ...ord, ...updates };
+        return updatedOrder;
+      }
+      return ord;
+    });
+    saveToLocalStorage();
+    if (updatedOrder) {
+      syncOrderToSupabase(updatedOrder);
+    }
+    notify();
+    return updatedOrder;
+  },
+
+  deleteOrder: (orderId: string) => {
+    globalOrders = globalOrders.filter(ord => ord.id !== orderId);
+    saveToLocalStorage();
+    deleteOrderFromSupabase(orderId);
+    notify();
+  },
+
   createStaff: (staffData: Omit<User, 'id'>) => {
     const isManager = staffData.role === 'manager';
     const newStaff: User = {
@@ -915,6 +978,9 @@ export const useSalonStore = () => {
     removeFromCart: salonStore.removeFromCart,
     clearCart: salonStore.clearCart,
     createOrder: salonStore.createOrder,
+    addOrder: salonStore.addOrder,
+    updateOrder: salonStore.updateOrder,
+    deleteOrder: salonStore.deleteOrder,
     createOnsiteJob: salonStore.createOnsiteJob,
     getStaffPeriodStats: salonStore.getStaffPeriodStats,
     submitPaymentProof: salonStore.submitPaymentProof,

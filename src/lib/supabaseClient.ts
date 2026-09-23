@@ -145,12 +145,15 @@ export const syncProfileToSupabase = async (user: User) => {
     const payload: any = {
       username: userUsername,
       name: user.name,
+      full_name: user.name,
       role: user.role,
       phone: user.phone || null,
       email: userEmail,
       salary: user.salary ? Number(user.salary) : null,
       specialization: user.specialization || null,
-      avatar: avatar
+      avatar: avatar,
+      avatar_url: avatar,
+      updated_at: new Date().toISOString()
     };
 
     if (user.password) {
@@ -437,13 +440,15 @@ export const deleteGalleryImageFromSupabase = async (imageId: string) => {
  */
 export const uploadSalonImageToSupabase = async (file: File): Promise<string> => {
   try {
-    const fileExt = file.name.split('.').pop() || 'png';
-    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+    const fileExt = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(fileExt) ? fileExt : 'png';
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${cleanExt}`;
     const filePath = `styles/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('salon-images')
       .upload(filePath, file, {
+        contentType: file.type || `image/${cleanExt === 'jpg' ? 'jpeg' : cleanExt}`,
         cacheControl: '3600',
         upsert: true
       });
@@ -474,13 +479,15 @@ export const uploadSalonImageToSupabase = async (file: File): Promise<string> =>
  */
 export const uploadPaymentProofToSupabase = async (file: File): Promise<string> => {
   try {
-    const fileExt = file.name.split('.').pop() || 'png';
-    const fileName = `proof_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+    const fileExt = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanExt = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(fileExt) ? fileExt : 'png';
+    const fileName = `proof_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${cleanExt}`;
     const filePath = `receipts/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('payment-proofs')
       .upload(filePath, file, {
+        contentType: file.type || `image/${cleanExt === 'jpg' ? 'jpeg' : cleanExt}`,
         cacheControl: '3600',
         upsert: true
       });

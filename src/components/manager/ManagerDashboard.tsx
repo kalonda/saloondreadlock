@@ -21,13 +21,19 @@ import {
   Edit3,
   Banknote,
   Search,
-  Trash2
+  Trash2,
+  Download,
+  Printer,
+  FileSpreadsheet,
+  FileText
 } from 'lucide-react';
 import { ServiceCrudModal } from './ServiceCrudModal';
 import { ImageLibraryModal } from './ImageLibraryModal';
 import { StaffCrudModal } from './StaffCrudModal';
+import { OrderCrudModal } from './OrderCrudModal';
 import { PaymentSettingsModal } from './PaymentSettingsModal';
 import { AndroidSuccessModal } from '../common/AndroidSuccessModal';
+import { exportToCsv, printPdfReport } from '../../utils/reportGenerator';
 
 export interface ManagerDashboardProps {
   activeScreen?: 'overview' | 'payments' | 'services' | 'staff';
@@ -57,6 +63,8 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
     confirmPayment, 
     rejectPayment, 
     assignStaff, 
+    updateOrder,
+    deleteOrder,
     getMetrics,
     getStaffPeriodStats,
     managerUser 
@@ -67,6 +75,10 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
 
   // Mobile Payment Settings Modal State
   const [showPaymentSettingsModal, setShowPaymentSettingsModal] = useState(false);
+
+  // Order CRUD Modal State
+  const [showOrderCrudModal, setShowOrderCrudModal] = useState(false);
+  const [selectedOrderForEdit, setSelectedOrderForEdit] = useState<Order | null>(null);
 
   // Overview Date Filter
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all'>('today');
@@ -118,6 +130,129 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
   const unassignedOrders = orders.filter(
     o => !o.assignedStaffId && (o.status === 'pending_assignment' || o.status === 'confirmed' || o.status === 'pending_payment')
   );
+
+  // Export Staff Performance Report (Individual or Entire Team)
+  const handleExportStaffReport = (targetStaffId?: string, format: 'pdf' | 'csv' = 'pdf') => {
+    const isSingle = targetStaffId && targetStaffId !== 'all';
+    const targetStaff = isSingle ? staffList.find(s => s.id === targetStaffId) : null;
+    const personnelToReport = isSingle && targetStaff ? [targetStaff] : staffList;
+
+    const periodLabelMap: Record<string, string> = {
+      today: 'Leo',
+      yesterday: 'Jana',
+      week: 'Wiki Hii',
+      month: 'Mwezi Huu',
+      custom: `${staffStartDate} hadi ${staffEndDate}`,
+      all: 'Muda Wote'
+    };
+
+    const currentPeriodLabel = periodLabelMap[staffPeriodFilter] || 'Leo';
+
+    if (format === 'csv') {
+      const headers = ['Jina la Fundi', 'Cheo / Utaalamu', 'Kipindi', 'Mapato (TZS)', 'Idadi ya Kazi', 'Mshahara wa Mwezi (TZS)'];
+      const rows = personnelToReport.map(s => {
+        const stats = getStaffPeriodStats(s.id, staffPeriodFilter, staffStartDate, staffEndDate);
+        return [
+          s.name,
+          s.specialization || (s.role === 'manager' ? 'Meneja' : 'Fundi'),
+          currentPeriodLabel,
+          stats.periodRevenue,
+          stats.periodCount,
+          s.salary || 450000
+        ];
+      });
+      exportToCsv(`Ripoti_Wafanyakazi_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, '_')}`, headers, rows);
+    } else {
+      // PDF Printable
+      let totalRevenue = 0;
+      let totalTasks = 0;
+      const rows = personnelToReport.map(s => {
+        const stats = getStaffPeriodStats(s.id, staffPeriodFilter, staffStartDate, staffEndDate);
+        totalRevenue += stats.periodRevenue;
+        totalTasks += stats.periodCount;
+        return [
+          s.name,
+          s.specialization || (s.role === 'manager' ? 'Meneja' : 'Fundi'),
+          `${stats.periodCount} kazi`,
+          formatCurrency(stats.periodRevenue),
+          formatCurrency(s.salary || 450000)
+        ];
+      });
+
+      printPdfReport({
+        title: isSingle && targetStaff ? `Ripoti ya Kazi: ${targetStaff.name}` : 'Ripoti ya Utendaji wa Kundi la Wafanyakazi',
+        subtitle: `Uchambuzi wa kazi na mapato ya wahudumu wa saluni`,
+        managerOrStaffName: activeManager.name,
+        periodLabel: currentPeriodLabel,
+        stats: [
+          { label: 'Jumla ya Wafanyakazi', value: personnelToReport.length },
+          { label: 'Jumla ya Kazi Zilizofanyika', value: totalTasks },
+          { label: 'Jumla ya Mapato', value: formatCurrency(totalRevenue) }
+        ],
+        headers: ['Jina la Fundi', 'Utaalamu', 'Kazi Zilizokamilika', 'Mapato Katika Kipindi', 'Mshahara'],
+        rows,
+        footerNote: 'Ripoti hii imezalishwa na Mfumo wa DREADLOCKS AND HAIR DRESSING SALOON'
+      });
+    }
+  };
+
+  // Export Salon Orders / Revenue Report
+  const handleExportOrdersReport = (format: 'pdf' | 'csv' = 'pdf') => {
+    const periodLabelMap: Record<string, string> = {
+      today: 'Leo',
+      yesterday: 'Jana',
+      week: 'Wiki Hii',
+      month: 'Mwezi Huu',
+      custom: `${overviewStartDate} hadi ${overviewEndDate}`,
+      all: 'Muda Wote'
+    };
+
+    const currentPeriodLabel = periodLabelMap[dateFilter] || 'Leo';
+
+    if (format === 'csv') {
+      const headers = ['Namba ya Oda', 'Mteja', 'Simu', 'Huduma', 'Bei (TZS)', 'Hali ya Oda', 'Mhudumu Aliyepewa', 'Njia ya Malipo', 'Tarehe'];
+      const rows = orders.map(o => [
+        `#${o.bookingCode}`,
+        o.customerName,
+        o.customerPhone,
+        o.items.map(i => i.nameSw).join(' + '),
+        o.totalAmount,
+        o.status,
+        o.assignedStaffName || 'Haijapangiwa',
+        o.paymentMethod || 'cash',
+        new Date(o.createdAt).toLocaleString('sw-TZ')
+      ]);
+      exportToCsv(`Ripoti_Oda_Saluni_${currentPeriodLabel.replace(/[^a-zA-Z0-9]/g, '_')}`, headers, rows);
+    } else {
+      const totalAmount = orders.reduce((acc, curr) => acc + curr.totalAmount, 0);
+      const completedCount = orders.filter(o => o.status === 'completed' || o.status === 'confirmed').length;
+
+      const rows = orders.slice(0, 100).map(o => [
+        `#${o.bookingCode}`,
+        o.customerName,
+        o.items.map(i => i.nameSw).join(', '),
+        formatCurrency(o.totalAmount),
+        o.assignedStaffName || '-',
+        o.status.toUpperCase(),
+        new Date(o.createdAt).toLocaleDateString('sw-TZ')
+      ]);
+
+      printPdfReport({
+        title: 'Ripoti Rasmi ya Mauzo na Historia ya Oda',
+        subtitle: `Orodha ya oda zilizowekwa saluni`,
+        managerOrStaffName: activeManager.name,
+        periodLabel: currentPeriodLabel,
+        stats: [
+          { label: 'Jumla ya Oda', value: orders.length },
+          { label: 'Zilizokamilika/Thibitishwa', value: completedCount },
+          { label: 'Jumla ya Thamani ya Mauzo', value: formatCurrency(totalAmount) }
+        ],
+        headers: ['Namba', 'Mteja', 'Huduma', 'Kiasi', 'Fundi', 'Hali', 'Tarehe'],
+        rows,
+        footerNote: 'DREADLOCKS AND HAIR DRESSING SALOON • Ripoti ya Mauzo'
+      });
+    }
+  };
 
   // Staff Work History Filter States
   const [staffHistoryFilterStaff, setStaffHistoryFilterStaff] = useState<string>('all');
@@ -514,6 +649,48 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
       {/* SCREEN 2: PAYMENTS & ORDERS SCREEN */}
       {activeScreen === 'payments' && (
         <div className="space-y-6">
+          {/* Top Actions & Report Export Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl">
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-white">Usimamizi wa Oda & Malipo</h3>
+              <p className="text-xs text-slate-400">CRUD ya oda zote, kuhakiki miamala, kupanga mafundi na kupakua ripoti</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedOrderForEdit(null);
+                  setShowOrderCrudModal(true);
+                }}
+                className="px-3.5 py-2 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center space-x-1.5 shadow-lg transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Weka Oda Mpya</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportOrdersReport('pdf')}
+                className="px-3 py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
+                title="Chapisha au Hifadhi kama PDF"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Ripoti ya PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportOrdersReport('csv')}
+                className="px-3 py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
+                title="Pakua faili la Excel/CSV"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Pakua CSV</span>
+              </button>
+            </div>
+          </div>
+
           {/* SECTION 1: Pending Payment Verifications */}
           <div id="orders-verification" className="p-5 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -535,7 +712,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                   className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Hariri Taarifa za Malipo (Lipa Namba)</span>
+                  <span>Hariri Taarifa za Lipa Namba</span>
                 </button>
                 {pendingVerifications.length > 0 && (
                   <span className="px-3 py-1 rounded-full bg-rose-500 text-white font-bold text-xs">
@@ -561,9 +738,34 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                       <span className="text-xs font-mono font-bold text-purple-300 px-2 py-0.5 rounded bg-slate-900">
                         {ord.bookingCode}
                       </span>
-                      <span className="text-base font-black text-amber-400 font-mono">
-                        {formatCurrency(ord.totalAmount)}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base font-black text-amber-400 font-mono">
+                          {formatCurrency(ord.totalAmount)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOrderForEdit(ord);
+                            setShowOrderCrudModal(true);
+                          }}
+                          className="p-1 rounded-lg bg-slate-700 hover:bg-purple-600 text-slate-300 hover:text-white transition-colors"
+                          title="Hariri Oda"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(lang === 'sw' ? `Una uhakika unataka kufuta oda #${ord.bookingCode}?` : `Delete order #${ord.bookingCode}?`)) {
+                              deleteOrder(ord.id);
+                            }
+                          }}
+                          className="p-1 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors"
+                          title="Futa Oda"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="text-xs space-y-1 text-slate-300">
@@ -573,8 +775,18 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                     </div>
 
                     <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-emerald-300 leading-relaxed">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Ujumbe Rasmi wa SMS:</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Ujumbe Rasmi wa SMS / Risiti:</span>
                       {ord.paymentProof?.smsText || `Muamala: ${ord.paymentProof?.transactionRef}`}
+                      {ord.paymentProof?.screenshotUrl && (
+                        <a 
+                          href={ord.paymentProof.screenshotUrl} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="block mt-1 text-xs text-purple-400 underline font-sans font-semibold"
+                        >
+                          🖼️ Tazama Picha ya Risiti (Screenshot)
+                        </a>
+                      )}
                     </div>
 
                     <div className="pt-2 flex items-center space-x-2">
@@ -619,7 +831,32 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                   <div key={ord.id} className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-3">
                     <div className="flex justify-between items-center text-xs">
                       <span className="font-mono font-bold text-purple-300">{ord.bookingCode}</span>
-                      <span className="text-amber-400 font-bold font-mono">{formatCurrency(ord.totalAmount)}</span>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-amber-400 font-bold font-mono">{formatCurrency(ord.totalAmount)}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOrderForEdit(ord);
+                            setShowOrderCrudModal(true);
+                          }}
+                          className="p-1 rounded bg-slate-700 hover:bg-purple-600 text-slate-300 hover:text-white"
+                          title="Hariri Oda"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(lang === 'sw' ? `Futa oda #${ord.bookingCode}?` : `Delete order #${ord.bookingCode}?`)) {
+                              deleteOrder(ord.id);
+                            }
+                          }}
+                          className="p-1 rounded bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white"
+                          title="Futa Oda"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-white">{ord.customerName}</h4>
@@ -650,17 +887,17 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                    {lang === 'sw' ? 'Historia ya Kazi za Wafanyakazi' : 'Staff Assigned Jobs & History'}
+                    {lang === 'sw' ? 'Historia ya Kazi za Wafanyakazi (CRUD)' : 'Staff Assigned Jobs & History'}
                   </h3>
                   <p className="text-xs text-slate-400">
                     {lang === 'sw' 
-                      ? 'Ufuatiliaji wa kazi zote zilizotolewa, zinazoendelea, na zilizokamilishwa na mafundi' 
-                      : 'Live tracking of all assigned, in-progress, and completed stylist tasks'}
+                      ? 'Ufuatiliaji, kuhariri, na kufuta kazi zilizotolewa, zinazoendelea, au zilizokamilika' 
+                      : 'Live tracking, editing, and management of stylist tasks'}
                   </p>
                 </div>
               </div>
 
-              {/* Filters */}
+              {/* Filters & Export Buttons */}
               <div className="flex flex-wrap items-center gap-2">
                 {/* Filter by Staff */}
                 <select
@@ -685,14 +922,36 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                   <option value="completed">{lang === 'sw' ? 'Imekamilika 🟢' : 'Completed 🟢'}</option>
                   <option value="assigned">{lang === 'sw' ? 'Amepangiwa 🟣' : 'Assigned 🟣'}</option>
                   <option value="confirmed">{lang === 'sw' ? 'Imethibitishwa 🔵' : 'Confirmed 🔵'}</option>
+                  <option value="pending_payment">{lang === 'sw' ? 'Inasubiri Malipo ⚪' : 'Pending Payment ⚪'}</option>
                 </select>
+
+                {/* Export Buttons */}
+                <button
+                  type="button"
+                  onClick={() => handleExportStaffReport(staffHistoryFilterStaff, 'pdf')}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/30 text-xs font-semibold flex items-center space-x-1"
+                  title="Pakua Ripoti ya PDF ya Kazi"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleExportStaffReport(staffHistoryFilterStaff, 'csv')}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center space-x-1"
+                  title="Pakua CSV ya Kazi"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>CSV</span>
+                </button>
               </div>
             </div>
 
             {/* List of Assigned Jobs */}
             {(() => {
               const assignedJobs = orders.filter(
-                o => o.assignedStaffId || o.status === 'in_progress' || o.status === 'completed' || o.status === 'assigned'
+                o => o.assignedStaffId || o.status === 'in_progress' || o.status === 'completed' || o.status === 'assigned' || o.status === 'confirmed' || o.status === 'pending_payment'
               ).filter(ord => {
                 if (staffHistoryFilterStaff !== 'all' && ord.assignedStaffId !== staffHistoryFilterStaff) {
                   return false;
@@ -717,7 +976,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                   {assignedJobs.map((ord) => {
                     const assignedStaff = staffList.find(s => s.id === ord.assignedStaffId);
                     const staffAvatar = ord.assignedStaffAvatar || assignedStaff?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80';
-                    const staffName = ord.assignedStaffName || assignedStaff?.name || 'Mhudumu';
+                    const staffName = ord.assignedStaffName || assignedStaff?.name || 'Haijapangiwa';
 
                     return (
                       <div
@@ -765,6 +1024,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                               {lang === 'sw' ? 'Inasubiri Uhakiki' : 'Pending Verification'}
                             </span>
                           )}
+                          {ord.status === 'pending_payment' && (
+                            <span className="px-2 py-0.5 rounded-lg bg-slate-700 text-slate-300 text-[10px] font-bold">
+                              {lang === 'sw' ? 'Inasubiri Malipo' : 'Pending'}
+                            </span>
+                          )}
                         </div>
 
                         {/* Order & Client Details */}
@@ -781,10 +1045,37 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                           </p>
                         </div>
 
-                        {/* Timing footer */}
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                          <span>Chanzo: <strong className="text-slate-300 capitalize">{ord.bookingSource === 'walk_in' ? 'Walk-In' : 'Online'}</strong></span>
-                          <span>{new Date(ord.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short' })} {new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        {/* CRUD Buttons & Timing Footer */}
+                        <div className="pt-1 flex items-center justify-between border-t border-slate-700/60">
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(ord.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short' })} {new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+
+                          <div className="flex items-center space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedOrderForEdit(ord);
+                                setShowOrderCrudModal(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-purple-600 text-slate-200 hover:text-white text-[11px] font-bold flex items-center space-x-1 transition-colors"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Hariri</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(lang === 'sw' ? `Una uhakika unataka kufuta oda #${ord.bookingCode}?` : `Delete order #${ord.bookingCode}?`)) {
+                                  deleteOrder(ord.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors"
+                              title="Futa Oda"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1291,6 +1582,23 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
           setSuccessModal({
             isOpen: true,
             title: lang === 'sw' ? 'Malipo Yamehifadhiwa!' : 'Payment Details Saved!',
+            message: msg
+          });
+        }}
+      />
+
+      {/* ORDER CRUD MODAL */}
+      <OrderCrudModal
+        isOpen={showOrderCrudModal}
+        orderToEdit={selectedOrderForEdit}
+        onClose={() => {
+          setShowOrderCrudModal(false);
+          setSelectedOrderForEdit(null);
+        }}
+        onSuccess={(msg) => {
+          setSuccessModal({
+            isOpen: true,
+            title: lang === 'sw' ? 'Oda Imesasishwa!' : 'Order Saved!',
             message: msg
           });
         }}
