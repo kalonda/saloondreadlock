@@ -85,47 +85,65 @@ const isUUID = (str?: string): boolean => {
 };
 
 /**
- * Ensure Manager Account exists in Supabase Profiles table
+ * Ensure Manager Account exists in Supabase Profiles table without overwriting customized avatars/names
  */
 export const ensureManagerRegisteredInSupabase = async (): Promise<User | null> => {
   const managerEmail = 'jeanclaudekalonda1@gmail.com';
   const managerUsername = 'jeanclaudekalonda1@gmail.com';
   const managerPass = 'juanclaudio';
-  const managerName = 'Jean Claude Kalonda';
-  const managerPhone = '+255 754 000 111';
-  const avatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+  const defaultManagerName = 'Jean Claude Kalonda';
+  const defaultManagerPhone = '+255 754 000 111';
 
   try {
+    // Check if manager already exists
+    const { data: existingManager } = await supabase
+      .from('profiles')
+      .select('*')
+      .or(`email.eq.${managerEmail},username.eq.${managerUsername}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingManager) {
+      return {
+        id: existingManager.id || 'mgr-1',
+        name: existingManager.name || existingManager.full_name || defaultManagerName,
+        email: existingManager.email || managerEmail,
+        phone: existingManager.phone || defaultManagerPhone,
+        role: 'manager',
+        username: existingManager.username || managerUsername,
+        password: existingManager.password || managerPass,
+        salary: existingManager.salary ? Number(existingManager.salary) : 1500000,
+        avatar: existingManager.avatar || existingManager.avatar_url || undefined
+      };
+    }
+
+    // Only insert if no manager profile exists at all
     const profilePayload: any = {
       username: managerUsername,
-      name: managerName,
+      name: defaultManagerName,
+      full_name: defaultManagerName,
       email: managerEmail,
       password: managerPass,
-      phone: managerPhone,
+      phone: defaultManagerPhone,
       role: 'manager',
-      avatar: avatar,
       specialization: 'General Salon Management & Executive Oversight',
       salary: 1500000
     };
 
-    const { error: profileError } = await supabase
+    await supabase
       .from('profiles')
       .upsert(profilePayload, { onConflict: 'username' });
 
-    if (!profileError) {
-      console.log('Manager profile verified & synced to Supabase profiles table.');
-    }
-
     return {
       id: 'mgr-1',
-      name: managerName,
+      name: defaultManagerName,
       email: managerEmail,
-      phone: managerPhone,
+      phone: defaultManagerPhone,
       role: 'manager',
       username: managerUsername,
       password: managerPass,
       salary: 1500000,
-      avatar: avatar
+      avatar: undefined
     };
   } catch (err) {
     console.warn('Supabase manager profile sync check:', err);
@@ -140,7 +158,6 @@ export const syncProfileToSupabase = async (user: User) => {
   try {
     const userEmail = user.email || (user.username?.includes('@') ? user.username : `${user.username || user.id}@saloon.co.tz`);
     const userUsername = user.username || userEmail.split('@')[0] || user.id;
-    const avatar = user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
 
     const payload: any = {
       username: userUsername,
@@ -151,8 +168,8 @@ export const syncProfileToSupabase = async (user: User) => {
       email: userEmail,
       salary: user.salary ? Number(user.salary) : null,
       specialization: user.specialization || null,
-      avatar: avatar,
-      avatar_url: avatar,
+      avatar: user.avatar || null,
+      avatar_url: user.avatar || null,
       updated_at: new Date().toISOString()
     };
 
@@ -216,7 +233,7 @@ export const fetchProfilesFromSupabase = async (): Promise<User[]> => {
       password: p.password || '123',
       phone: p.phone || '+255 700 000 000',
       role: (p.role === 'manager' || p.role === 'staff' || p.role === 'customer') ? p.role : 'customer',
-      avatar: p.avatar || p.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      avatar: p.avatar || p.avatar_url || undefined,
       specialization: p.specialization || undefined,
       salary: p.salary ? Number(p.salary) : undefined,
       active: true

@@ -24,15 +24,6 @@ interface UserProfileModalProps {
   onClose: () => void;
 }
 
-const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-];
-
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const { lang, currentUser, updateUserProfile } = useSalonStore();
   const t = getTranslation(lang);
@@ -225,12 +216,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 {/* Avatar Action Controls */}
                 <div className="space-y-2 text-center sm:text-left flex-1">
                   <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                    <label className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center space-x-1.5 cursor-pointer shadow transition-all">
+                    <label className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center space-x-1.5 cursor-pointer shadow transition-all">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>{lang === 'sw' ? 'Pakia Picha Mpya' : 'Upload Photo'}</span>
+                      <span>{isUploadingAvatar ? (lang === 'sw' ? 'Inapakia...' : 'Uploading...') : (lang === 'sw' ? 'Pakia Picha ya Wasifu' : 'Upload Profile Photo')}</span>
                       <input 
                         type="file" 
                         accept="image/*" 
+                        disabled={isUploadingAvatar}
                         onChange={handleAvatarFileUpload} 
                         className="hidden" 
                       />
@@ -247,27 +239,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                       </button>
                     )}
                   </div>
-
-                  {/* Preset Avatars Selector */}
-                  <div>
-                    <span className="text-[10px] text-slate-400 block mb-1">
-                      {lang === 'sw' ? 'Au chagua picha kutoka saluni:' : 'Or choose a preset avatar:'}
-                    </span>
-                    <div className="flex items-center space-x-1.5 overflow-x-auto pb-1">
-                      {PRESET_AVATARS.map((url, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setAvatar(url)}
-                          className={`w-8 h-8 rounded-xl overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
-                            avatar === url ? 'border-purple-400 scale-105 shadow' : 'border-slate-700 opacity-60 hover:opacity-100'
-                          }`}
-                        >
-                          <img src={url} alt="Preset" className="w-full h-full object-cover" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    {lang === 'sw' 
+                      ? 'Picha yako itahifadhiwa moja kwa moja kwenye Supabase Storage na kuonekana kwenye vifaa vyote.' 
+                      : 'Photo will be stored directly in Supabase Storage across all devices.'}
+                  </p>
                 </div>
               </div>
             </div>

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../../types';
 import { useSalonStore } from '../../store/salonStore';
 import { getTranslation, formatCurrency } from '../../i18n';
-import { X, UserPlus, Edit3, Trash2, ShieldCheck, Check, Sparkles } from 'lucide-react';
+import { X, UserPlus, Edit3, Trash2, ShieldCheck, Check, Sparkles, Upload, Loader2 } from 'lucide-react';
+import { uploadSalonImageToSupabase } from '../../lib/supabaseClient';
 
 interface StaffCrudModalProps {
   isOpen: boolean;
@@ -10,15 +11,6 @@ interface StaffCrudModalProps {
   editingStaff: User | null;
   onSuccess: (message: string) => void;
 }
-
-const AVATAR_PRESETS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80'
-];
 
 export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
   isOpen,
@@ -28,6 +20,7 @@ export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
 }) => {
   const { lang, createStaff, updateStaff, deleteStaff } = useSalonStore();
   const t = getTranslation(lang);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [role, setRole] = useState<UserRole>('staff');
   const [name, setName] = useState('');
@@ -36,7 +29,7 @@ export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
   const [password, setPassword] = useState('123');
   const [specialization, setSpecialization] = useState('');
   const [salary, setSalary] = useState('450000');
-  const [avatar, setAvatar] = useState(AVATAR_PRESETS[0]);
+  const [avatar, setAvatar] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
@@ -48,7 +41,7 @@ export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
       setPassword(editingStaff.password || '123');
       setSpecialization(editingStaff.specialization || '');
       setSalary(String(editingStaff.salary || (editingStaff.role === 'manager' ? 850000 : 450000)));
-      setAvatar(editingStaff.avatar || AVATAR_PRESETS[0]);
+      setAvatar(editingStaff.avatar || '');
       setShowDeleteConfirm(false);
     } else {
       setRole('staff');
@@ -58,7 +51,7 @@ export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
       setPassword('123');
       setSpecialization('Knotless Braids, Weaving & Styling');
       setSalary('450000');
-      setAvatar(AVATAR_PRESETS[0]);
+      setAvatar('');
       setShowDeleteConfirm(false);
     }
   }, [editingStaff, isOpen]);
@@ -277,37 +270,52 @@ export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
             </div>
           </div>
 
-          {/* Avatar Selector */}
+          {/* Avatar / Photo Upload */}
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-              Picha ya Profaili (Avatar):
+              Picha ya Profaili:
             </label>
-            <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-              {AVATAR_PRESETS.map((av, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setAvatar(av)}
-                  className={`relative shrink-0 w-11 h-11 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                    avatar === av ? 'border-purple-500 ring-2 ring-purple-500/40' : 'border-slate-700 opacity-70 hover:opacity-100'
-                  }`}
-                >
-                  <img src={av} alt="Avatar" className="w-full h-full object-cover" />
-                  {avatar === av && (
-                    <div className="absolute inset-0 bg-purple-600/40 flex items-center justify-center">
-                      <Check className="w-4 h-4 text-white stroke-[3]" />
-                    </div>
-                  )}
-                </button>
-              ))}
+            <div className="flex items-center space-x-3">
+              {avatar ? (
+                <img src={avatar} alt="Preview" className="w-12 h-12 rounded-xl object-cover border-2 border-purple-500/50 shadow" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-dashed border-slate-700 flex items-center justify-center text-slate-500 text-xs font-bold">
+                  Picha
+                </div>
+              )}
+
+              <div className="flex-1 space-y-1">
+                <label className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold inline-flex items-center space-x-1.5 cursor-pointer shadow transition-all">
+                  {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                  <span>{isUploading ? 'Inapakia...' : 'Chagua / Pakia Picha'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={isUploading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setIsUploading(true);
+                        try {
+                          const url = await uploadSalonImageToSupabase(file);
+                          setAvatar(url);
+                        } catch (err) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (typeof reader.result === 'string') setAvatar(reader.result);
+                          };
+                          reader.readAsDataURL(file);
+                        } finally {
+                          setIsUploading(false);
+                        }
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-[10px] text-slate-400">Picha itahifadhiwa kwenye Supabase Storage.</p>
+              </div>
             </div>
-            <input
-              type="url"
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-              placeholder="https://..."
-              className="mt-2 w-full p-2 rounded-xl bg-slate-800 border border-slate-700 text-[11px] text-slate-300 focus:border-purple-500 focus:outline-none font-mono"
-            />
           </div>
 
           {/* Delete Confirmation Warning */}

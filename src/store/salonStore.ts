@@ -846,6 +846,10 @@ export const salonStore = {
       return u;
     });
 
+    if (globalUser.role === 'manager' || globalUser.email === MANAGER_USER.email) {
+      Object.assign(MANAGER_USER, updates);
+    }
+
     saveToLocalStorage();
     syncProfileToSupabase(updatedUser);
     notify();
