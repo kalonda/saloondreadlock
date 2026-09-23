@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Saloon MS Luxe",
+    "slug": "saloon-ms-crossplatform",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/logo.svg",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./public/logo.svg",
+      "resizeMode": "contain",
+      "backgroundColor": "#090d16"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.saloon.crossplatform"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./public/logo.svg",
+        "backgroundColor": "#090d16"
+      },
+      "package": "com.saloon.crossplatform"
+    },
+    "web": {
+      "favicon": "./public/logo.svg",
+      "bundler": "metro"
+    },
+    "plugins": []
+  }
+}

@@ -1,0 +1,769 @@
+import { useState, useEffect } from 'react';
+import { 
+  User, 
+  Order, 
+  SelectedServiceItem, 
+  ServiceItem, 
+  Language, 
+  AppTheme,
+  PaymentProof, 
+  MobileMoneyProvider, 
+  OrderStatus,
+  DashboardMetrics 
+} from '../types';
+import { INITIAL_STAFF, MANAGER_USER, INITIAL_SAMPLE_ORDERS } from '../data/mockData';
+import { SALON_SERVICES } from '../data/services';
+import { INITIAL_GALLERY_IMAGES, GalleryImage } from '../data/imageGallery';
+import { supabase, syncProfileToSupabase, syncOrderToSupabase, fetchProfilesFromSupabase, ensureManagerRegisteredInSupabase, deleteProfileFromSupabase } from '../lib/supabaseClient';
+import confetti from 'canvas-confetti';
+
+const STORAGE_KEYS = {
+  LANG: 'saloon_ms_lang',
+  THEME: 'saloon_ms_theme',
+  USER: 'saloon_ms_user',
+  STAFF: 'saloon_ms_staff',
+  ORDERS: 'saloon_ms_orders',
+  CART: 'saloon_ms_cart',
+  SERVICES: 'saloon_ms_services',
+  GALLERY: 'saloon_ms_gallery',
+  REGISTERED_USERS: 'saloon_ms_registered_users'
+};
+
+// Global Store State
+let globalLanguage: Language = (localStorage.getItem(STORAGE_KEYS.LANG) as Language) || 'sw';
+let globalTheme: AppTheme = (localStorage.getItem(STORAGE_KEYS.THEME) as AppTheme) || 'dark';
+let globalUser: User | null = JSON.parse(localStorage.getItem(STORAGE_KEYS.USER) || 'null') || null;
+
+let globalRegisteredUsers: User[] = (() => {
+  const saved = localStorage.getItem(STORAGE_KEYS.REGISTERED_USERS);
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  }
+  return [];
+})();
+
+let globalServices: ServiceItem[] = (() => {
+  const saved = localStorage.getItem(STORAGE_KEYS.SERVICES);
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  }
+  return SALON_SERVICES;
+})();
+
+let globalGallery: GalleryImage[] = (() => {
+  const saved = localStorage.getItem(STORAGE_KEYS.GALLERY);
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  }
+  return INITIAL_GALLERY_IMAGES;
+})();
+
+let globalStaff: User[] = (() => {
+  const saved = localStorage.getItem(STORAGE_KEYS.STAFF);
+  if (saved) {
+    try { 
+      const parsed: User[] = JSON.parse(saved); 
+      // Filter out legacy dummy mock staff (staff-1 to staff-5)
+      return parsed.filter(s => !['staff-1', 'staff-2', 'staff-3', 'staff-4', 'staff-5'].includes(s.id));
+    } catch (e) { console.error(e); }
+  }
+  return INITIAL_STAFF;
+})();
+
+let globalOrders: Order[] = (() => {
+  const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
+  if (saved) {
+    try { 
+      const parsed: Order[] = JSON.parse(saved);
+      // Filter out legacy dummy mock orders
+      return parsed.filter(o => o.id !== 'ord-101');
+    } catch (e) { console.error(e); }
+  }
+  return INITIAL_SAMPLE_ORDERS;
+})();
+
+let globalCart: SelectedServiceItem[] = (() => {
+  const saved = localStorage.getItem(STORAGE_KEYS.CART);
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  }
+  return [];
+})();
+
+const listeners = new Set<() => void>();
+
+const notify = () => {
+  listeners.forEach(fn => fn());
+};
+
+const saveToLocalStorage = () => {
+  localStorage.setItem(STORAGE_KEYS.LANG, globalLanguage);
+  localStorage.setItem(STORAGE_KEYS.THEME, globalTheme);
+  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(globalUser));
+  localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(globalStaff));
+  localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(globalOrders));
+  localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(globalCart));
+  localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(globalServices));
+  localStorage.setItem(STORAGE_KEYS.GALLERY, JSON.stringify(globalGallery));
+  localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(globalRegisteredUsers));
+};
+
+// Apply theme to document
+export const applyAppTheme = (theme: AppTheme) => {
+  if (typeof document !== 'undefined') {
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
+    }
+  }
+};
+
+// Initialize theme immediately
+applyAppTheme(globalTheme);
+
+// Bootstrap manager profile into Supabase
+ensureManagerRegisteredInSupabase().catch(() => {});
+
+// Fetch profiles from Supabase on startup
+if (typeof window !== 'undefined') {
+  fetchProfilesFromSupabase().then((profiles) => {
+    if (profiles && profiles.length > 0) {
+      const staffProfiles = profiles.filter(p => p.role === 'staff' || (p.role === 'manager' && p.email !== 'jeanclaudekalonda1@gmail.com'));
+      const customerProfiles = profiles.filter(p => p.role === 'customer');
+      if (staffProfiles.length > 0) {
+        globalStaff = staffProfiles;
+      }
+      if (customerProfiles.length > 0) {
+        globalRegisteredUsers = customerProfiles;
+      }
+      saveToLocalStorage();
+      notify();
+    }
+  }).catch(() => {});
+
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) {
+      const email = session.user.email || '';
+      const isManager = email.toLowerCase() === 'jeanclaudekalonda1@gmail.com';
+      const authenticatedUser: User = {
+        id: session.user.id,
+        email: email,
+        name: session.user.user_metadata?.full_name || email.split('@')[0],
+        phone: session.user.user_metadata?.phone || '+255 700 000 000',
+        role: isManager ? 'manager' : 'customer',
+        avatar: session.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+      };
+      globalUser = authenticatedUser;
+      saveToLocalStorage();
+      await syncProfileToSupabase(authenticatedUser);
+      notify();
+    } else if (event === 'SIGNED_OUT') {
+      globalUser = null;
+      saveToLocalStorage();
+      notify();
+    }
+  });
+}
+
+export const salonStore = {
+  getLanguage: () => globalLanguage,
+  setLanguage: (lang: Language) => {
+    globalLanguage = lang;
+    saveToLocalStorage();
+    notify();
+  },
+
+  getTheme: () => globalTheme,
+  setTheme: (theme: AppTheme) => {
+    globalTheme = theme;
+    applyAppTheme(theme);
+    saveToLocalStorage();
+    notify();
+  },
+
+  getUser: () => globalUser,
+  setUser: (user: User | null) => {
+    globalUser = user;
+    saveToLocalStorage();
+    if (user) {
+      syncProfileToSupabase(user);
+    }
+    notify();
+  },
+
+  getServices: () => globalServices,
+  getGallery: () => globalGallery,
+  getStaff: () => globalStaff,
+  getOrders: () => globalOrders,
+  getCart: () => globalCart,
+
+  // --- SERVICE CRUD OPERATIONS ---
+  addService: (newService: Omit<ServiceItem, 'id'>) => {
+    const service: ServiceItem = {
+      ...newService,
+      id: `srv-${Date.now()}`
+    };
+    globalServices = [service, ...globalServices];
+    saveToLocalStorage();
+    notify();
+    return service;
+  },
+
+  updateService: (serviceId: string, updatedData: Partial<ServiceItem>) => {
+    globalServices = globalServices.map(s => {
+      if (s.id === serviceId) {
+        return { ...s, ...updatedData };
+      }
+      return s;
+    });
+    saveToLocalStorage();
+    notify();
+  },
+
+  deleteService: (serviceId: string) => {
+    globalServices = globalServices.filter(s => s.id !== serviceId);
+    saveToLocalStorage();
+    notify();
+  },
+
+  updateServiceImage: (serviceId: string, imageUrl: string) => {
+    globalServices = globalServices.map(s => {
+      if (s.id === serviceId) {
+        return { ...s, image: imageUrl };
+      }
+      return s;
+    });
+    saveToLocalStorage();
+    notify();
+  },
+
+  // --- IMAGE GALLERY OPERATIONS ---
+  addImageToGallery: (image: Omit<GalleryImage, 'id'>) => {
+    const newImg: GalleryImage = {
+      ...image,
+      id: `img-${Date.now()}`
+    };
+    globalGallery = [newImg, ...globalGallery];
+    saveToLocalStorage();
+    notify();
+    return newImg;
+  },
+
+  deleteGalleryImage: (imageId: string) => {
+    globalGallery = globalGallery.filter(i => i.id !== imageId);
+    saveToLocalStorage();
+    notify();
+  },
+
+  // --- CART OPERATIONS ---
+  addToCart: (service: ServiceItem, selectedPrice: number, optionLabel?: string) => {
+    const existingIndex = globalCart.findIndex(i => i.serviceId === service.id);
+    if (existingIndex > -1) {
+      globalCart[existingIndex].selectedPrice = selectedPrice;
+      globalCart[existingIndex].selectedOptionLabel = optionLabel;
+      globalCart[existingIndex].count = 1;
+    } else {
+      globalCart.push({
+        serviceId: service.id,
+        nameSw: service.nameSw,
+        nameEn: service.nameEn,
+        nameFr: service.nameFr,
+        selectedPrice,
+        selectedOptionLabel: optionLabel,
+        count: 1,
+        image: service.image
+      });
+    }
+    saveToLocalStorage();
+    notify();
+  },
+
+  removeFromCart: (serviceId: string) => {
+    globalCart = globalCart.filter(i => i.serviceId !== serviceId);
+    saveToLocalStorage();
+    notify();
+  },
+
+  clearCart: () => {
+    globalCart = [];
+    saveToLocalStorage();
+    notify();
+  },
+
+  // --- ORDER OPERATIONS ---
+  createOrder: (orderData: Partial<Order>): Order => {
+    const bookingCode = `SLN-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newOrder: Order = {
+      id: `ord-${Date.now()}`,
+      bookingCode,
+      customerName: orderData.customerName || 'Mteja Mgeni',
+      customerPhone: orderData.customerPhone || '+255 700 000 000',
+      customerType: orderData.customerType || 'registered',
+      customerId: orderData.customerId,
+      items: orderData.items || [...globalCart],
+      subtotal: orderData.subtotal || 0,
+      discount: orderData.discount || 0,
+      totalAmount: Math.max(0, (orderData.subtotal || 0) - (orderData.discount || 0)),
+      assignedStaffId: orderData.assignedStaffId,
+      assignedStaffName: orderData.assignedStaffName,
+      assignedStaffAvatar: orderData.assignedStaffAvatar,
+      status: orderData.status || 'pending_payment',
+      paymentMethod: orderData.paymentMethod || 'mobile_money',
+      createdAt: new Date().toISOString(),
+      bookingSource: orderData.bookingSource || 'remote_web',
+      notes: orderData.notes
+    };
+
+    globalOrders = [newOrder, ...globalOrders];
+    globalCart = [];
+    saveToLocalStorage();
+    syncOrderToSupabase(newOrder);
+    notify();
+    return newOrder;
+  },
+
+  submitPaymentProof: (orderId: string, proof: PaymentProof, provider: MobileMoneyProvider) => {
+    globalOrders = globalOrders.map(ord => {
+      if (ord.id === orderId) {
+        return {
+          ...ord,
+          status: 'paid_pending_confirmation',
+          paymentMethod: 'mobile_money',
+          paymentProvider: provider,
+          paymentProof: proof
+        };
+      }
+      return ord;
+    });
+    saveToLocalStorage();
+    notify();
+  },
+
+  confirmPayment: (orderId: string) => {
+    let confirmedOrder: Order | undefined;
+    globalOrders = globalOrders.map(ord => {
+      if (ord.id === orderId) {
+        confirmedOrder = {
+          ...ord,
+          status: 'confirmed',
+          confirmedAt: new Date().toISOString()
+        };
+        return confirmedOrder;
+      }
+      return ord;
+    });
+
+    // Update staff completed task count
+    if (confirmedOrder && confirmedOrder.assignedStaffId) {
+      const staffId = confirmedOrder.assignedStaffId;
+      globalStaff = globalStaff.map(st => {
+        if (st.id === staffId) {
+          return {
+            ...st,
+            totalTasksCompleted: (st.totalTasksCompleted || 0) + 1
+          };
+        }
+        return st;
+      });
+    }
+
+    saveToLocalStorage();
+    confetti({
+      particleCount: 70,
+      spread: 60,
+      origin: { y: 0.6 }
+    });
+    notify();
+  },
+
+  rejectPayment: (orderId: string) => {
+    globalOrders = globalOrders.map(ord => {
+      if (ord.id === orderId) {
+        return {
+          ...ord,
+          status: 'pending_payment',
+          notes: (ord.notes ? ord.notes + ' | ' : '') + 'Malipo hayakuthibitishwa na Meneja.'
+        };
+      }
+      return ord;
+    });
+    saveToLocalStorage();
+    notify();
+  },
+
+  updateOrderStatus: (orderId: string, status: OrderStatus) => {
+    globalOrders = globalOrders.map(ord => {
+      if (ord.id === orderId) {
+        return {
+          ...ord,
+          status,
+          completedAt: status === 'completed' ? new Date().toISOString() : ord.completedAt
+        };
+      }
+      return ord;
+    });
+    saveToLocalStorage();
+    notify();
+  },
+
+  assignStaff: (orderId: string, staffId: string) => {
+    const staff = globalStaff.find(s => s.id === staffId);
+    if (!staff) return;
+
+    globalOrders = globalOrders.map(ord => {
+      if (ord.id === orderId) {
+        return {
+          ...ord,
+          assignedStaffId: staff.id,
+          assignedStaffName: staff.name,
+          assignedStaffAvatar: staff.avatar,
+          status: ord.status === 'pending_assignment' ? 'assigned' : ord.status
+        };
+      }
+      return ord;
+    });
+    saveToLocalStorage();
+    notify();
+  },
+
+  createStaff: (staffData: Omit<User, 'id'>) => {
+    const isManager = staffData.role === 'manager';
+    const newStaff: User = {
+      ...staffData,
+      id: `${isManager ? 'mgr' : 'staff'}-${Date.now()}`,
+      role: staffData.role || 'staff',
+      salary: staffData.salary || (isManager ? 850000 : 450000),
+      dailyEarnings: 0,
+      totalEarnings: 0,
+      totalTasksCompleted: 0,
+      rating: 5.0,
+      reviewCount: 0,
+      active: true,
+      avatar: staffData.avatar || (isManager 
+        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80'
+        : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80')
+    };
+    globalStaff = [...globalStaff, newStaff];
+    saveToLocalStorage();
+    syncProfileToSupabase(newStaff);
+    notify();
+    return newStaff;
+  },
+
+  createOnsiteJob: ({
+    staffId,
+    staffName,
+    staffAvatar,
+    service,
+    price,
+    clientName,
+    clientPhone,
+    paymentMethod = 'cash'
+  }: {
+    staffId: string;
+    staffName: string;
+    staffAvatar?: string;
+    service: ServiceItem;
+    price: number;
+    clientName?: string;
+    clientPhone?: string;
+    paymentMethod?: any;
+  }): Order => {
+    const bookingCode = `WK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newOrder: Order = {
+      id: `ord-${Date.now()}`,
+      bookingCode,
+      customerName: clientName?.trim() || 'Mteja wa Saluni (Walk-in)',
+      customerPhone: clientPhone?.trim() || '+255 700 000 000',
+      customerType: 'guest',
+      items: [{
+        serviceId: service.id,
+        nameSw: service.nameSw,
+        nameEn: service.nameEn,
+        nameFr: service.nameFr,
+        selectedPrice: price,
+        count: 1,
+        image: service.image
+      }],
+      subtotal: price,
+      discount: 0,
+      totalAmount: price,
+      assignedStaffId: staffId,
+      assignedStaffName: staffName,
+      assignedStaffAvatar: staffAvatar,
+      status: 'in_progress',
+      paymentMethod,
+      createdAt: new Date().toISOString(),
+      bookingSource: 'walk_in'
+    };
+    globalOrders = [newOrder, ...globalOrders];
+    saveToLocalStorage();
+    syncOrderToSupabase(newOrder);
+    notify();
+    return newOrder;
+  },
+
+  getStaffPeriodStats: (
+    staffId: string, 
+    filterPeriod: 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all' = 'today',
+    customStartDate?: string,
+    customEndDate?: string
+  ) => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
+    const startOfWeek = startOfToday - now.getDay() * 24 * 60 * 60 * 1000;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    const staffOrders = globalOrders.filter(o => 
+      o.assignedStaffId === staffId && 
+      (o.status === 'confirmed' || o.status === 'completed')
+    );
+
+    const filtered = staffOrders.filter(ord => {
+      const ordTime = new Date(ord.createdAt).getTime();
+      if (filterPeriod === 'custom' && customStartDate && customEndDate) {
+        const start = new Date(customStartDate).setHours(0, 0, 0, 0);
+        const end = new Date(customEndDate).setHours(23, 59, 59, 999);
+        return ordTime >= start && ordTime <= end;
+      }
+      if (filterPeriod === 'today') return ordTime >= startOfToday;
+      if (filterPeriod === 'yesterday') return ordTime >= startOfYesterday && ordTime < startOfToday;
+      if (filterPeriod === 'week') return ordTime >= startOfWeek;
+      if (filterPeriod === 'month') return ordTime >= startOfMonth;
+      return true;
+    });
+
+    const periodRevenue = filtered.reduce((acc, curr) => acc + curr.totalAmount, 0);
+    const periodCount = filtered.length;
+
+    return {
+      periodRevenue,
+      periodCount
+    };
+  },
+
+  updateStaff: (staffId: string, updates: Partial<User>) => {
+    let updatedStaffMember: User | null = null;
+    globalStaff = globalStaff.map(st => {
+      if (st.id === staffId || st.email === staffId || st.username === staffId) {
+        updatedStaffMember = { ...st, ...updates };
+        return updatedStaffMember;
+      }
+      return st;
+    });
+
+    if (staffId === MANAGER_USER.id || staffId === 'mgr-1' || staffId === MANAGER_USER.email || staffId === MANAGER_USER.username) {
+      Object.assign(MANAGER_USER, updates);
+      if (globalUser && globalUser.role === 'manager') {
+        globalUser = { ...globalUser, ...updates };
+      }
+      updatedStaffMember = { ...MANAGER_USER, ...updates };
+    }
+
+    saveToLocalStorage();
+    if (updatedStaffMember) {
+      syncProfileToSupabase(updatedStaffMember);
+    }
+    notify();
+    return updatedStaffMember;
+  },
+
+  deleteStaff: (staffId: string) => {
+    const target = globalStaff.find(s => s.id === staffId || s.email === staffId || s.username === staffId);
+    if (target) {
+      deleteProfileFromSupabase(target);
+    }
+    globalStaff = globalStaff.filter(st => st.id !== staffId && st.email !== staffId && st.username !== staffId);
+    saveToLocalStorage();
+    notify();
+  },
+
+  updateStaffSalary: (staffId: string, newSalary: number) => {
+    let updatedStaffMember: User | null = null;
+    globalStaff = globalStaff.map(st => {
+      if (st.id === staffId || st.email === staffId) {
+        updatedStaffMember = { ...st, salary: newSalary };
+        return updatedStaffMember;
+      }
+      return st;
+    });
+
+    if (staffId === MANAGER_USER.id || staffId === 'mgr-1' || staffId === MANAGER_USER.email) {
+      MANAGER_USER.salary = newSalary;
+      if (globalUser && globalUser.role === 'manager') {
+        globalUser = { ...globalUser, salary: newSalary };
+      }
+      updatedStaffMember = { ...MANAGER_USER, salary: newSalary };
+    }
+
+    saveToLocalStorage();
+    if (updatedStaffMember) {
+      syncProfileToSupabase(updatedStaffMember);
+    }
+    notify();
+  },
+
+  updateUserProfile: (updates: Partial<User>) => {
+    if (!globalUser) return;
+    const updatedUser: User = {
+      ...globalUser,
+      ...updates
+    };
+    globalUser = updatedUser;
+
+    // If the user is in staff list or manager, update staff list as well
+    globalStaff = globalStaff.map(s => {
+      if (s.id === updatedUser.id || s.email === updatedUser.email || s.username === updatedUser.username) {
+        return { ...s, ...updates };
+      }
+      return s;
+    });
+
+    // If user is in registered users list, update them as well
+    globalRegisteredUsers = globalRegisteredUsers.map(u => {
+      if (u.id === updatedUser.id || u.email === updatedUser.email || u.username === updatedUser.username) {
+        return { ...u, ...updates };
+      }
+      return u;
+    });
+
+    saveToLocalStorage();
+    syncProfileToSupabase(updatedUser);
+    notify();
+    return updatedUser;
+  },
+
+  registerUser: (newUser: User) => {
+    const existing = globalRegisteredUsers.find(
+      u => (u.email && u.email.toLowerCase() === newUser.email?.toLowerCase()) ||
+           (u.username && u.username.toLowerCase() === newUser.username?.toLowerCase())
+    );
+
+    if (existing) {
+      globalRegisteredUsers = globalRegisteredUsers.map(u => 
+        u.id === existing.id ? { ...u, ...newUser } : u
+      );
+    } else {
+      globalRegisteredUsers = [newUser, ...globalRegisteredUsers];
+    }
+
+    saveToLocalStorage();
+    syncProfileToSupabase(newUser);
+    notify();
+    return newUser;
+  },
+
+  getRegisteredUsers: () => globalRegisteredUsers,
+
+  getMetrics: (
+    filterPeriod: 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all' = 'today',
+    customStartDate?: string,
+    customEndDate?: string
+  ): DashboardMetrics => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
+    const startOfWeek = startOfToday - now.getDay() * 24 * 60 * 60 * 1000;
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+    const filteredOrders = globalOrders.filter(ord => {
+      const ordTime = new Date(ord.createdAt).getTime();
+      if (filterPeriod === 'custom' && customStartDate && customEndDate) {
+        const start = new Date(customStartDate).setHours(0, 0, 0, 0);
+        const end = new Date(customEndDate).setHours(23, 59, 59, 999);
+        return ordTime >= start && ordTime <= end;
+      }
+      if (filterPeriod === 'today') return ordTime >= startOfToday;
+      if (filterPeriod === 'yesterday') return ordTime >= startOfYesterday && ordTime < startOfToday;
+      if (filterPeriod === 'week') return ordTime >= startOfWeek;
+      if (filterPeriod === 'month') return ordTime >= startOfMonth;
+      return true;
+    });
+
+    const confirmedOrCompleted = filteredOrders.filter(o => o.status === 'confirmed' || o.status === 'completed');
+    const totalRevenue = confirmedOrCompleted.reduce((acc, curr) => acc + curr.totalAmount, 0);
+    
+    const totalServiceVolume: Record<string, number> = {};
+    globalServices.forEach(s => {
+      totalServiceVolume[s.id] = 0;
+    });
+
+    confirmedOrCompleted.forEach(ord => {
+      ord.items.forEach(item => {
+        totalServiceVolume[item.serviceId] = (totalServiceVolume[item.serviceId] || 0) + (item.count || 1);
+      });
+    });
+
+    const todayOrders = globalOrders.filter(o => new Date(o.createdAt).getTime() >= startOfToday);
+    const todayConfirmed = todayOrders.filter(o => o.status === 'confirmed' || o.status === 'completed');
+    const todayRevenue = todayConfirmed.reduce((acc, curr) => acc + curr.totalAmount, 0);
+
+    return {
+      totalRevenue,
+      todayRevenue,
+      totalOrders: filteredOrders.length,
+      todayOrders: todayOrders.length,
+      completedOrdersCount: confirmedOrCompleted.length,
+      pendingPaymentCount: filteredOrders.filter(o => o.status === 'pending_payment').length,
+      pendingConfirmationCount: globalOrders.filter(o => o.status === 'paid_pending_confirmation').length,
+      activeStaffCount: globalStaff.filter(s => s.active).length,
+      totalServiceVolume
+    };
+  }
+};
+
+export const useSalonStore = () => {
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setTick(t => t + 1);
+    listeners.add(handleUpdate);
+    return () => {
+      listeners.delete(handleUpdate);
+    };
+  }, []);
+
+  return {
+    lang: salonStore.getLanguage(),
+    setLanguage: salonStore.setLanguage,
+    theme: salonStore.getTheme(),
+    setTheme: salonStore.setTheme,
+    currentUser: salonStore.getUser(),
+    setCurrentUser: salonStore.setUser,
+    services: salonStore.getServices(),
+    gallery: salonStore.getGallery(),
+    staffList: salonStore.getStaff(),
+    registeredUsers: salonStore.getRegisteredUsers(),
+    orders: salonStore.getOrders(),
+    cart: salonStore.getCart(),
+    addService: salonStore.addService,
+    updateService: salonStore.updateService,
+    deleteService: salonStore.deleteService,
+    updateServiceImage: salonStore.updateServiceImage,
+    addImageToGallery: salonStore.addImageToGallery,
+    deleteGalleryImage: salonStore.deleteGalleryImage,
+    addToCart: salonStore.addToCart,
+    removeFromCart: salonStore.removeFromCart,
+    clearCart: salonStore.clearCart,
+    createOrder: salonStore.createOrder,
+    createOnsiteJob: salonStore.createOnsiteJob,
+    getStaffPeriodStats: salonStore.getStaffPeriodStats,
+    submitPaymentProof: salonStore.submitPaymentProof,
+    confirmPayment: salonStore.confirmPayment,
+    rejectPayment: salonStore.rejectPayment,
+    updateOrderStatus: salonStore.updateOrderStatus,
+    assignStaff: salonStore.assignStaff,
+    createStaff: salonStore.createStaff,
+    updateStaff: salonStore.updateStaff,
+    deleteStaff: salonStore.deleteStaff,
+    updateStaffSalary: salonStore.updateStaffSalary,
+    updateUserProfile: salonStore.updateUserProfile,
+    registerUser: salonStore.registerUser,
+    getMetrics: salonStore.getMetrics,
+    managerUser: MANAGER_USER
+  };
+};
