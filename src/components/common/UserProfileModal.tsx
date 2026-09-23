@@ -17,6 +17,8 @@ import {
   Upload
 } from 'lucide-react';
 
+import { uploadSalonImageToSupabase } from '../../lib/supabaseClient';
+
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -39,6 +41,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [username, setUsername] = useState(currentUser?.username || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
   const [avatar, setAvatar] = useState<string | undefined>(currentUser?.avatar);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   
   // Password change state
   const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -53,16 +56,24 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
   if (!isOpen || !currentUser) return null;
 
-  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          setAvatar(reader.result);
-        }
-      };
-      reader.readAsDataURL(file);
+      setIsUploadingAvatar(true);
+      try {
+        const publicUrl = await uploadSalonImageToSupabase(file);
+        setAvatar(publicUrl);
+      } catch (err) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setAvatar(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setIsUploadingAvatar(false);
+      }
     }
   };
 

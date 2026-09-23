@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useSalonStore } from '../../store/salonStore';
 import { getTranslation } from '../../i18n';
 import { ServiceItem, ServiceCategory } from '../../types';
+import { uploadSalonImageToSupabase } from '../../lib/supabaseClient';
 import { 
   X, 
   Scissors, 
   Trash2, 
   Save, 
-  Image as ImageIcon
+  Image as ImageIcon,
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { AndroidSuccessModal } from '../common/AndroidSuccessModal';
 
@@ -39,6 +42,7 @@ export const ServiceCrudModal: React.FC<ServiceCrudModalProps> = ({
   const [imageUrl, setImageUrl] = useState<string>('https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80');
   const [descSw, setDescSw] = useState('');
   const [descEn, setDescEn] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Android Success state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -74,6 +78,21 @@ export const ServiceCrudModal: React.FC<ServiceCrudModalProps> = ({
       setDescEn('');
     }
   }, [editingService, isOpen]);
+
+  const handleDirectFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploadingImage(true);
+      try {
+        const publicUrl = await uploadSalonImageToSupabase(file);
+        setImageUrl(publicUrl);
+      } catch (err) {
+        console.warn('Error uploading service image:', err);
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -158,30 +177,69 @@ export const ServiceCrudModal: React.FC<ServiceCrudModalProps> = ({
         <form id="service-crud-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           
           {/* Image Selection & Preview Bar */}
-          <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center space-x-3">
-              <img src={imageUrl} alt="Service Preview" className="w-14 h-14 rounded-xl object-cover border border-purple-500/40 shadow" />
-              <div>
-                <span className="text-xs font-bold text-white block">{t.app.servicePhoto}</span>
-                <span className="text-[11px] text-slate-400">{t.app.servicePhotoSubtitle}</span>
+          <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700 space-y-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center space-x-3 w-full sm:w-auto">
+                <img 
+                  src={imageUrl} 
+                  alt="Service Preview" 
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-purple-500/50 shadow-md shrink-0 bg-slate-950" 
+                />
+                <div>
+                  <span className="text-xs font-bold text-white block">{t.app.servicePhoto}</span>
+                  <span className="text-[11px] text-slate-400">{t.app.servicePhotoSubtitle}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 w-full sm:w-auto">
+                {/* Upload from Device Button */}
+                <label className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-bold flex items-center justify-center space-x-1.5 cursor-pointer transition-all shadow">
+                  {isUploadingImage ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-purple-400" />
+                  )}
+                  <span>{isUploadingImage ? (lang === 'sw' ? 'Inapakia...' : 'Uploading...') : (lang === 'sw' ? 'Pakia Picha' : 'Upload File')}</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleDirectFileUpload}
+                    disabled={isUploadingImage}
+                  />
+                </label>
+
+                {/* Choose from Library Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (editingService) {
+                      onOpenImageLibrary({ ...editingService, image: imageUrl });
+                    } else {
+                      onOpenImageLibrary({ id: 'temp', nameSw, image: imageUrl } as any);
+                    }
+                  }}
+                  className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center justify-center space-x-1.5 shadow-lg shadow-purple-900/30 cursor-pointer transition-all"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  <span>{t.app.chooseFromLibrary}</span>
+                </button>
               </div>
             </div>
 
-            {/* Compact select image button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (editingService) {
-                  onOpenImageLibrary(editingService);
-                } else {
-                  onOpenImageLibrary({ id: 'temp', nameSw, image: imageUrl } as any);
-                }
-              }}
-              className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow cursor-pointer transition-colors"
-            >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>{t.app.chooseFromLibrary}</span>
-            </button>
+            {/* Direct Image URL input */}
+            <div>
+              <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
+                {lang === 'sw' ? 'Kiungo cha Picha (Image URL):' : 'Direct Image URL:'}
+              </label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-slate-300 focus:border-purple-500 focus:outline-none"
+              />
+            </div>
           </div>
 
           {/* Names in 3 Languages */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSalonStore } from '../../store/salonStore';
 import { getTranslation, formatCurrency } from '../../i18n';
 import { ServiceItem, Order, User } from '../../types';
@@ -119,6 +119,50 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
     o => !o.assignedStaffId && (o.status === 'pending_assignment' || o.status === 'confirmed' || o.status === 'pending_payment')
   );
 
+  // Staff Work History Filter States
+  const [staffHistoryFilterStaff, setStaffHistoryFilterStaff] = useState<string>('all');
+  const [staffHistoryFilterStatus, setStaffHistoryFilterStatus] = useState<string>('all');
+
+  // Real-time Staff Job Start / Completion Alerts for Manager
+  const [liveAlerts, setLiveAlerts] = useState<Array<{ id: string; message: string; type: 'start' | 'complete'; time: string }>>([]);
+  const prevOrdersRef = React.useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    const prev = prevOrdersRef.current;
+    orders.forEach(ord => {
+      const prevStatus = prev[ord.id];
+      if (prevStatus && prevStatus !== ord.status) {
+        if (ord.status === 'in_progress') {
+          const staffName = ord.assignedStaffName || 'Mfanyakazi';
+          const srvName = ord.items[0]?.nameSw || 'Huduma';
+          const alertItem = {
+            id: `${ord.id}-${Date.now()}`,
+            message: lang === 'sw' 
+              ? `Fundi ${staffName} ameanza kazi ya "${srvName}" kwa mteja ${ord.customerName} (#${ord.bookingCode})`
+              : `Stylist ${staffName} started "${srvName}" for client ${ord.customerName} (#${ord.bookingCode})`,
+            type: 'start' as const,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setLiveAlerts(curr => [alertItem, ...curr.filter(a => a.id !== alertItem.id).slice(0, 4)]);
+        } else if (ord.status === 'completed') {
+          const staffName = ord.assignedStaffName || 'Mfanyakazi';
+          const srvName = ord.items[0]?.nameSw || 'Huduma';
+          const alertItem = {
+            id: `${ord.id}-${Date.now()}`,
+            message: lang === 'sw'
+              ? `Fundi ${staffName} amekamilisha kazi ya "${srvName}" kwa mteja ${ord.customerName} (#${ord.bookingCode})`
+              : `Stylist ${staffName} completed "${srvName}" for client ${ord.customerName} (#${ord.bookingCode})`,
+            type: 'complete' as const,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setLiveAlerts(curr => [alertItem, ...curr.filter(a => a.id !== alertItem.id).slice(0, 4)]);
+        }
+      }
+      prev[ord.id] = ord.status;
+    });
+    prevOrdersRef.current = { ...prev };
+  }, [orders, lang]);
+
   const handleConfirmAssignment = (staffId: string) => {
     if (selectedOrderToAssign) {
       assignStaff(selectedOrderToAssign.id, staffId);
@@ -172,6 +216,44 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
   return (
     <div className="max-w-7xl mx-auto space-y-5 sm:space-y-7 pb-20 w-full max-w-full overflow-x-hidden">
       
+      {/* Real-time Android-style Live Activity & Job Notifications Banner */}
+      {liveAlerts.length > 0 && (
+        <div className="space-y-2 animate-fade-in">
+          {liveAlerts.map(alert => (
+            <div 
+              key={alert.id}
+              className={`p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-xl ${
+                alert.type === 'start'
+                  ? 'bg-gradient-to-r from-amber-950/70 to-slate-900 border-amber-500/40 text-amber-200'
+                  : 'bg-gradient-to-r from-emerald-950/70 to-slate-900 border-emerald-500/40 text-emerald-200'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-xl shrink-0">
+                  {alert.type === 'start' ? '🔔' : '✅'}
+                </span>
+                <div>
+                  <p className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                    {alert.message}
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {alert.time} • Live Salon Update
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setLiveAlerts(curr => curr.filter(a => a.id !== alert.id))}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Android-style Segmented Screen Navigation Tabs */}
       <div className="flex items-center space-x-1.5 p-1.5 bg-slate-900 border border-slate-800 rounded-2xl overflow-x-auto shadow">
         <button
@@ -558,6 +640,159 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
               </div>
             </div>
           )}
+
+          {/* SECTION 3: Historia ya Kazi za Wafanyakazi & Majukumu */}
+          <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <Scissors className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                    {lang === 'sw' ? 'Historia ya Kazi za Wafanyakazi' : 'Staff Assigned Jobs & History'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {lang === 'sw' 
+                      ? 'Ufuatiliaji wa kazi zote zilizotolewa, zinazoendelea, na zilizokamilishwa na mafundi' 
+                      : 'Live tracking of all assigned, in-progress, and completed stylist tasks'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Filter by Staff */}
+                <select
+                  value={staffHistoryFilterStaff}
+                  onChange={(e) => setStaffHistoryFilterStaff(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="all">{lang === 'sw' ? 'Wafanyakazi Wote' : 'All Staff'}</option>
+                  {staffList.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.specialization || 'Fundi'})</option>
+                  ))}
+                </select>
+
+                {/* Filter by Status */}
+                <select
+                  value={staffHistoryFilterStatus}
+                  onChange={(e) => setStaffHistoryFilterStatus(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-white focus:outline-none cursor-pointer"
+                >
+                  <option value="all">{lang === 'sw' ? 'Hali Zote' : 'All Statuses'}</option>
+                  <option value="in_progress">{lang === 'sw' ? 'Kazi Inaendelea 🟡' : 'In Progress 🟡'}</option>
+                  <option value="completed">{lang === 'sw' ? 'Imekamilika 🟢' : 'Completed 🟢'}</option>
+                  <option value="assigned">{lang === 'sw' ? 'Amepangiwa 🟣' : 'Assigned 🟣'}</option>
+                  <option value="confirmed">{lang === 'sw' ? 'Imethibitishwa 🔵' : 'Confirmed 🔵'}</option>
+                </select>
+              </div>
+            </div>
+
+            {/* List of Assigned Jobs */}
+            {(() => {
+              const assignedJobs = orders.filter(
+                o => o.assignedStaffId || o.status === 'in_progress' || o.status === 'completed' || o.status === 'assigned'
+              ).filter(ord => {
+                if (staffHistoryFilterStaff !== 'all' && ord.assignedStaffId !== staffHistoryFilterStaff) {
+                  return false;
+                }
+                if (staffHistoryFilterStatus !== 'all' && ord.status !== staffHistoryFilterStatus) {
+                  return false;
+                }
+                return true;
+              });
+
+              if (assignedJobs.length === 0) {
+                return (
+                  <div className="p-6 text-center rounded-2xl bg-slate-800/40 border border-slate-800 text-slate-400 text-xs sm:text-sm">
+                    <CheckCircle2 className="w-6 h-6 text-slate-500 mx-auto mb-1.5" />
+                    {lang === 'sw' ? 'Hakuna historia ya kazi kulingana na vichujio ulivyochagua.' : 'No staff job history matching the selected filters.'}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {assignedJobs.map((ord) => {
+                    const assignedStaff = staffList.find(s => s.id === ord.assignedStaffId);
+                    const staffAvatar = ord.assignedStaffAvatar || assignedStaff?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80';
+                    const staffName = ord.assignedStaffName || assignedStaff?.name || 'Mhudumu';
+
+                    return (
+                      <div
+                        key={ord.id}
+                        className="p-4 rounded-2xl bg-slate-800/90 border border-slate-700 shadow-lg space-y-3"
+                      >
+                        {/* Header: Staff Info & Status */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2.5">
+                            <img 
+                              src={staffAvatar} 
+                              alt={staffName} 
+                              className="w-9 h-9 rounded-xl object-cover border border-purple-500/40 shrink-0" 
+                            />
+                            <div>
+                              <span className="text-xs font-bold text-white block leading-tight">
+                                {staffName}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {assignedStaff?.specialization || 'Fundi wa Saluni'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          {ord.status === 'in_progress' && (
+                            <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold animate-pulse flex items-center space-x-1">
+                              <span>●</span>
+                              <span>{lang === 'sw' ? 'Inaendelea' : 'In Progress'}</span>
+                            </span>
+                          )}
+                          {ord.status === 'completed' && (
+                            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center space-x-1">
+                              <span>✓</span>
+                              <span>{lang === 'sw' ? 'Imekamilika' : 'Completed'}</span>
+                            </span>
+                          )}
+                          {(ord.status === 'assigned' || ord.status === 'confirmed') && (
+                            <span className="px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
+                              {lang === 'sw' ? 'Amepangiwa' : 'Assigned'}
+                            </span>
+                          )}
+                          {ord.status === 'paid_pending_confirmation' && (
+                            <span className="px-2 py-0.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[10px] font-bold">
+                              {lang === 'sw' ? 'Inasubiri Uhakiki' : 'Pending Verification'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Order & Client Details */}
+                        <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs space-y-1">
+                          <div className="flex justify-between items-center text-[11px] font-mono">
+                            <span className="text-purple-300 font-bold">#{ord.bookingCode}</span>
+                            <span className="text-amber-400 font-bold">{formatCurrency(ord.totalAmount)}</span>
+                          </div>
+                          <p className="text-slate-300 text-xs">
+                            <strong className="text-slate-400">Mteja:</strong> {ord.customerName} ({ord.customerPhone})
+                          </p>
+                          <p className="text-slate-300 text-xs">
+                            <strong className="text-slate-400">Huduma:</strong> {ord.items.map(i => i.nameSw).join(', ')}
+                          </p>
+                        </div>
+
+                        {/* Timing footer */}
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                          <span>Chanzo: <strong className="text-slate-300 capitalize">{ord.bookingSource === 'walk_in' ? 'Walk-In' : 'Online'}</strong></span>
+                          <span>{new Date(ord.createdAt).toLocaleDateString([], { day: '2-digit', month: 'short' })} {new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 
@@ -1041,6 +1276,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
           setTargetServiceForImage(null);
         }}
         targetService={targetServiceForImage}
+        onSelectImageForService={(srvId, imgUrl) => {
+          if (editingService) {
+            setEditingService({ ...editingService, image: imgUrl });
+          }
+        }}
       />
 
       {/* PAYMENT SETTINGS MODAL */}

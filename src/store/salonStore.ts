@@ -15,7 +15,21 @@ import {
 import { INITIAL_STAFF, MANAGER_USER, INITIAL_SAMPLE_ORDERS, SALON_TILL_DETAILS } from '../data/mockData';
 import { SALON_SERVICES } from '../data/services';
 import { INITIAL_GALLERY_IMAGES, GalleryImage } from '../data/imageGallery';
-import { supabase, syncProfileToSupabase, syncOrderToSupabase, fetchProfilesFromSupabase, ensureManagerRegisteredInSupabase, deleteProfileFromSupabase } from '../lib/supabaseClient';
+import { 
+  supabase, 
+  syncProfileToSupabase, 
+  syncOrderToSupabase, 
+  fetchProfilesFromSupabase, 
+  ensureManagerRegisteredInSupabase, 
+  deleteProfileFromSupabase,
+  fetchOrdersFromSupabase,
+  syncServiceToSupabase,
+  fetchServicesFromSupabase,
+  deleteServiceFromSupabase,
+  syncGalleryImageToSupabase,
+  fetchGalleryFromSupabase,
+  deleteGalleryImageFromSupabase
+} from '../lib/supabaseClient';
 import confetti from 'canvas-confetti';
 
 const STORAGE_KEYS = {
@@ -65,7 +79,6 @@ let globalStaff: User[] = (() => {
   if (saved) {
     try { 
       const parsed: User[] = JSON.parse(saved); 
-      // Filter out legacy dummy mock staff (staff-1 to staff-5)
       return parsed.filter(s => !['staff-1', 'staff-2', 'staff-3', 'staff-4', 'staff-5'].includes(s.id));
     } catch (e) { console.error(e); }
   }
@@ -76,8 +89,7 @@ let globalOrders: Order[] = (() => {
   const saved = localStorage.getItem(STORAGE_KEYS.ORDERS);
   if (saved) {
     try { 
-      const parsed: Order[] = JSON.parse(saved);
-      // Filter out legacy dummy mock orders
+      const parsed: Order[] = JSON.parse(saved); 
       return parsed.filter(o => o.id !== 'ord-101');
     } catch (e) { console.error(e); }
   }
@@ -138,22 +150,104 @@ applyAppTheme(globalTheme);
 // Bootstrap manager profile into Supabase
 ensureManagerRegisteredInSupabase().catch(() => {});
 
-// Fetch profiles from Supabase on startup
-if (typeof window !== 'undefined') {
-  fetchProfilesFromSupabase().then((profiles) => {
-    if (profiles && profiles.length > 0) {
-      const staffProfiles = profiles.filter(p => p.role === 'staff' || (p.role === 'manager' && p.email !== 'jeanclaudekalonda1@gmail.com'));
-      const customerProfiles = profiles.filter(p => p.role === 'customer');
+// Comprehensive Real-time Cross-Device Synchronization
+export const refreshAllFromSupabase = async () => {
+  try {
+    const [remoteProfiles, remoteOrders, remoteServices, remoteGallery] = await Promise.all([
+      fetchProfilesFromSupabase(),
+      fetchOrdersFromSupabase(),
+      fetchServicesFromSupabase(),
+      fetchGalleryFromSupabase()
+    ]);
+
+    let changed = false;
+
+    if (remoteProfiles && remoteProfiles.length > 0) {
+      const staffProfiles = remoteProfiles.filter(p => p.role === 'staff' || (p.role === 'manager' && p.email !== 'jeanclaudekalonda1@gmail.com'));
+      const customerProfiles = remoteProfiles.filter(p => p.role === 'customer');
       if (staffProfiles.length > 0) {
         globalStaff = staffProfiles;
+        changed = true;
       }
       if (customerProfiles.length > 0) {
         globalRegisteredUsers = customerProfiles;
+        changed = true;
       }
+    }
+
+    if (remoteOrders && remoteOrders.length > 0) {
+      // Merge remote orders with any existing local-only orders
+      const orderMap = new Map<string, Order>();
+      remoteOrders.forEach(o => orderMap.set(o.id, o));
+      globalOrders.forEach(o => {
+        if (!orderMap.has(o.id)) {
+          orderMap.set(o.id, o);
+        }
+      });
+      globalOrders = Array.from(orderMap.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      changed = true;
+    }
+
+    if (remoteServices && remoteServices.length > 0) {
+      globalServices = remoteServices;
+      changed = true;
+    }
+
+    if (remoteGallery && remoteGallery.length > 0) {
+      globalGallery = remoteGallery;
+      changed = true;
+    }
+
+    if (changed) {
       saveToLocalStorage();
       notify();
     }
-  }).catch(() => {});
+  } catch (err) {
+    console.warn('Cross-device sync error:', err);
+  }
+};
+
+// Initialize background sync & realtime listeners across devices
+if (typeof window !== 'undefined') {
+  refreshAllFromSupabase().catch(() => {});
+
+  // Frequent polling for instantaneous cross-device consistency
+  setInterval(() => {
+    refreshAllFromSupabase().catch(() => {});
+  }, 3500);
+
+  // Sync on tab focus or visibility change
+  window.addEventListener('focus', () => {
+    refreshAllFromSupabase().catch(() => {});
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshAllFromSupabase().catch(() => {});
+    }
+  });
+
+  // Supabase Realtime channel subscription
+  try {
+    supabase
+      .channel('public:salon-cross-device-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        refreshAllFromSupabase();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        refreshAllFromSupabase();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, () => {
+        refreshAllFromSupabase();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gallery_images' }, () => {
+        refreshAllFromSupabase();
+      })
+      .subscribe();
+  } catch (e) {
+    console.warn('Realtime subscription warning:', e);
+  }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user) {
@@ -211,7 +305,7 @@ export const salonStore = {
   getOrders: () => globalOrders,
   getCart: () => globalCart,
 
-  // --- SERVICE CRUD OPERATIONS ---
+  // --- SERVICE CRUD OPERATIONS (Synced to Supabase) ---
   addService: (newService: Omit<ServiceItem, 'id'>) => {
     const service: ServiceItem = {
       ...newService,
@@ -219,39 +313,51 @@ export const salonStore = {
     };
     globalServices = [service, ...globalServices];
     saveToLocalStorage();
+    syncServiceToSupabase(service);
     notify();
     return service;
   },
 
   updateService: (serviceId: string, updatedData: Partial<ServiceItem>) => {
+    let targetService: ServiceItem | null = null;
     globalServices = globalServices.map(s => {
       if (s.id === serviceId) {
-        return { ...s, ...updatedData };
+        targetService = { ...s, ...updatedData };
+        return targetService;
       }
       return s;
     });
     saveToLocalStorage();
+    if (targetService) {
+      syncServiceToSupabase(targetService);
+    }
     notify();
   },
 
   deleteService: (serviceId: string) => {
     globalServices = globalServices.filter(s => s.id !== serviceId);
     saveToLocalStorage();
+    deleteServiceFromSupabase(serviceId);
     notify();
   },
 
   updateServiceImage: (serviceId: string, imageUrl: string) => {
+    let targetService: ServiceItem | null = null;
     globalServices = globalServices.map(s => {
       if (s.id === serviceId) {
-        return { ...s, image: imageUrl };
+        targetService = { ...s, image: imageUrl };
+        return targetService;
       }
       return s;
     });
     saveToLocalStorage();
+    if (targetService) {
+      syncServiceToSupabase(targetService);
+    }
     notify();
   },
 
-  // --- IMAGE GALLERY OPERATIONS ---
+  // --- IMAGE GALLERY OPERATIONS (Synced to Supabase) ---
   addImageToGallery: (image: Omit<GalleryImage, 'id'>) => {
     const newImg: GalleryImage = {
       ...image,
@@ -259,6 +365,7 @@ export const salonStore = {
     };
     globalGallery = [newImg, ...globalGallery];
     saveToLocalStorage();
+    syncGalleryImageToSupabase(newImg);
     notify();
     return newImg;
   },
@@ -266,6 +373,7 @@ export const salonStore = {
   deleteGalleryImage: (imageId: string) => {
     globalGallery = globalGallery.filter(i => i.id !== imageId);
     saveToLocalStorage();
+    deleteGalleryImageFromSupabase(imageId);
     notify();
   },
 
@@ -337,19 +445,24 @@ export const salonStore = {
   },
 
   submitPaymentProof: (orderId: string, proof: PaymentProof, provider: MobileMoneyProvider) => {
+    let updatedOrder: Order | null = null;
     globalOrders = globalOrders.map(ord => {
       if (ord.id === orderId) {
-        return {
+        updatedOrder = {
           ...ord,
           status: 'paid_pending_confirmation',
           paymentMethod: 'mobile_money',
           paymentProvider: provider,
           paymentProof: proof
         };
+        return updatedOrder;
       }
       return ord;
     });
     saveToLocalStorage();
+    if (updatedOrder) {
+      syncOrderToSupabase(updatedOrder);
+    }
     notify();
   },
 
@@ -372,16 +485,21 @@ export const salonStore = {
       const staffId = confirmedOrder.assignedStaffId;
       globalStaff = globalStaff.map(st => {
         if (st.id === staffId) {
-          return {
+          const updatedStaff = {
             ...st,
             totalTasksCompleted: (st.totalTasksCompleted || 0) + 1
           };
+          syncProfileToSupabase(updatedStaff);
+          return updatedStaff;
         }
         return st;
       });
     }
 
     saveToLocalStorage();
+    if (confirmedOrder) {
+      syncOrderToSupabase(confirmedOrder);
+    }
     confetti({
       particleCount: 70,
       spread: 60,
@@ -391,32 +509,42 @@ export const salonStore = {
   },
 
   rejectPayment: (orderId: string) => {
+    let rejectedOrder: Order | null = null;
     globalOrders = globalOrders.map(ord => {
       if (ord.id === orderId) {
-        return {
+        rejectedOrder = {
           ...ord,
           status: 'pending_payment',
           notes: (ord.notes ? ord.notes + ' | ' : '') + 'Malipo hayakuthibitishwa na Meneja.'
         };
+        return rejectedOrder;
       }
       return ord;
     });
     saveToLocalStorage();
+    if (rejectedOrder) {
+      syncOrderToSupabase(rejectedOrder);
+    }
     notify();
   },
 
   updateOrderStatus: (orderId: string, status: OrderStatus) => {
+    let updatedOrder: Order | null = null;
     globalOrders = globalOrders.map(ord => {
       if (ord.id === orderId) {
-        return {
+        updatedOrder = {
           ...ord,
           status,
           completedAt: status === 'completed' ? new Date().toISOString() : ord.completedAt
         };
+        return updatedOrder;
       }
       return ord;
     });
     saveToLocalStorage();
+    if (updatedOrder) {
+      syncOrderToSupabase(updatedOrder);
+    }
     notify();
   },
 
@@ -424,19 +552,24 @@ export const salonStore = {
     const staff = globalStaff.find(s => s.id === staffId);
     if (!staff) return;
 
+    let assignedOrder: Order | null = null;
     globalOrders = globalOrders.map(ord => {
       if (ord.id === orderId) {
-        return {
+        assignedOrder = {
           ...ord,
           assignedStaffId: staff.id,
           assignedStaffName: staff.name,
           assignedStaffAvatar: staff.avatar,
           status: ord.status === 'pending_assignment' ? 'assigned' : ord.status
         };
+        return assignedOrder;
       }
       return ord;
     });
     saveToLocalStorage();
+    if (assignedOrder) {
+      syncOrderToSupabase(assignedOrder);
+    }
     notify();
   },
 

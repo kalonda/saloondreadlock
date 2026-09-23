@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, Order, ServiceItem } from '../types';
+import { GalleryImage } from '../data/imageGallery';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://upvlnmvqozjvzoelyovs.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwdmxubXZxb3pqdnpvZWx5b3ZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwODkxNzcsImV4cCI6MjEwNTY2NTE3N30.4ee_JVTyvp3xJR3MzlrR08bYNI9XMT5cVJVwOt5IQAE';
@@ -165,17 +166,12 @@ export const syncProfileToSupabase = async (user: User) => {
       .upsert(payload, { onConflict: 'username' });
 
     if (error) {
-      // Fallback: attempt insert/update without onConflict parameter if table uses primary key id
       const { error: fallbackError } = await supabase
         .from('profiles')
         .upsert(payload);
       if (fallbackError) {
         console.warn('Supabase profiles upsert warning:', fallbackError.message);
-      } else {
-        console.log('Successfully synced profile to Supabase (fallback):', userUsername);
       }
-    } else {
-      console.log('Successfully synced profile to Supabase:', userUsername);
     }
   } catch (err) {
     console.warn('Supabase profile sync error:', err);
@@ -194,7 +190,6 @@ export const deleteProfileFromSupabase = async (user: User) => {
     } else if (user.email) {
       await supabase.from('profiles').delete().eq('email', user.email);
     }
-    console.log('Successfully deleted profile from Supabase:', user.username || user.name);
   } catch (err) {
     console.warn('Supabase profile deletion warning:', err);
   }
@@ -234,31 +229,207 @@ export const fetchProfilesFromSupabase = async (): Promise<User[]> => {
  */
 export const syncOrderToSupabase = async (order: Order) => {
   try {
-    const { error } = await supabase.from('orders').upsert({
+    const payload: any = {
       id: order.id,
       booking_code: order.bookingCode,
       customer_name: order.customerName,
       customer_phone: order.customerPhone,
       customer_type: order.customerType,
-      customer_id: order.customerId,
+      customer_id: order.customerId || null,
       items: order.items,
       subtotal: order.subtotal,
-      discount: order.discount,
+      discount: order.discount || 0,
       total_amount: order.totalAmount,
-      assigned_staff_id: order.assignedStaffId,
-      assigned_staff_name: order.assignedStaffName,
+      assigned_staff_id: order.assignedStaffId || null,
+      assigned_staff_name: order.assignedStaffName || null,
+      assigned_staff_avatar: order.assignedStaffAvatar || null,
       status: order.status,
-      payment_method: order.paymentMethod,
-      payment_provider: order.paymentProvider,
-      payment_proof: order.paymentProof,
-      booking_source: order.bookingSource,
-      notes: order.notes,
+      payment_method: order.paymentMethod || null,
+      payment_provider: order.paymentProvider || null,
+      payment_proof: order.paymentProof || null,
+      booking_source: order.bookingSource || 'remote_mobile',
+      notes: order.notes || null,
+      confirmed_at: order.confirmedAt || null,
+      completed_at: order.completedAt || null,
       created_at: order.createdAt
-    });
-    if (error) console.warn('Supabase order sync warning:', error.message);
+    };
+
+    const { error } = await supabase.from('orders').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      console.warn('Supabase order sync error:', error.message);
+    }
   } catch (e) {
-    console.warn('Supabase order sync error:', e);
+    console.warn('Supabase order sync exception:', e);
   }
+};
+
+/**
+ * Fetch all orders from Supabase `orders` table
+ */
+export const fetchOrdersFromSupabase = async (): Promise<Order[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error || !data) {
+      if (error) console.warn('Supabase fetchOrders notice:', error.message);
+      return [];
+    }
+
+    return data.map((o: any) => ({
+      id: o.id,
+      bookingCode: o.booking_code || o.bookingCode || `BK-${o.id.substring(0, 4)}`,
+      customerName: o.customer_name || o.customerName || 'Mteja',
+      customerPhone: o.customer_phone || o.customerPhone || '+255 700 000 000',
+      customerType: (o.customer_type === 'registered' ? 'registered' : 'guest'),
+      customerId: o.customer_id || o.customerId,
+      items: Array.isArray(o.items) ? o.items : [],
+      subtotal: Number(o.subtotal || o.total_amount || 0),
+      discount: Number(o.discount || 0),
+      totalAmount: Number(o.total_amount || o.totalAmount || 0),
+      assignedStaffId: o.assigned_staff_id || o.assignedStaffId || undefined,
+      assignedStaffName: o.assigned_staff_name || o.assignedStaffName || undefined,
+      assignedStaffAvatar: o.assigned_staff_avatar || o.assignedStaffAvatar || undefined,
+      status: o.status || 'pending_payment',
+      paymentMethod: o.payment_method || o.paymentMethod || 'mobile_money',
+      paymentProvider: o.payment_provider || o.paymentProvider || undefined,
+      paymentProof: o.payment_proof || o.paymentProof || undefined,
+      confirmedAt: o.confirmed_at || o.confirmedAt || undefined,
+      completedAt: o.completed_at || o.completedAt || undefined,
+      createdAt: o.created_at || o.createdAt || new Date().toISOString(),
+      notes: o.notes || undefined,
+      bookingSource: o.booking_source || o.bookingSource || 'remote_mobile'
+    }));
+  } catch (e) {
+    console.warn('Could not fetch orders:', e);
+    return [];
+  }
+};
+
+/**
+ * Delete order from Supabase
+ */
+export const deleteOrderFromSupabase = async (orderId: string) => {
+  try {
+    await supabase.from('orders').delete().eq('id', orderId);
+  } catch (e) {
+    console.warn('Error deleting order from Supabase:', e);
+  }
+};
+
+/**
+ * Sync service to Supabase `services` table
+ */
+export const syncServiceToSupabase = async (service: ServiceItem) => {
+  try {
+    const payload = {
+      id: service.id,
+      name_sw: service.nameSw,
+      name_en: service.nameEn,
+      name_fr: service.nameFr,
+      category: service.category,
+      price_type: service.priceType,
+      min_price: service.minPrice,
+      max_price: service.maxPrice,
+      default_price: service.defaultPrice,
+      duration_minutes: service.durationMinutes,
+      image: service.image,
+      description_sw: service.descriptionSw,
+      description_en: service.descriptionEn,
+      description_fr: service.descriptionFr,
+      popular: !!service.popular,
+      options: service.options || []
+    };
+    const { error } = await supabase.from('services').upsert(payload, { onConflict: 'id' });
+    if (error) console.warn('Supabase service sync notice:', error.message);
+  } catch (e) {
+    console.warn('Supabase service sync exception:', e);
+  }
+};
+
+/**
+ * Fetch all services from Supabase
+ */
+export const fetchServicesFromSupabase = async (): Promise<ServiceItem[]> => {
+  try {
+    const { data, error } = await supabase.from('services').select('*');
+    if (error || !data || data.length === 0) return [];
+    return data.map((s: any) => ({
+      id: s.id,
+      nameSw: s.name_sw || s.nameSw || 'Huduma',
+      nameEn: s.name_en || s.nameEn || s.name_sw || 'Service',
+      nameFr: s.name_fr || s.nameFr || s.name_sw || 'Service',
+      category: s.category || 'braids',
+      priceType: s.price_type || s.priceType || 'fixed',
+      minPrice: Number(s.min_price || s.minPrice || s.default_price || 10000),
+      maxPrice: Number(s.max_price || s.maxPrice || s.default_price || 10000),
+      defaultPrice: Number(s.default_price || s.defaultPrice || 10000),
+      durationMinutes: Number(s.duration_minutes || s.durationMinutes || 45),
+      image: s.image || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80',
+      descriptionSw: s.description_sw || s.descriptionSw || '',
+      descriptionEn: s.description_en || s.descriptionEn || '',
+      descriptionFr: s.description_fr || s.descriptionFr || '',
+      popular: !!s.popular,
+      options: Array.isArray(s.options) ? s.options : []
+    }));
+  } catch (e) {
+    return [];
+  }
+};
+
+/**
+ * Delete service from Supabase
+ */
+export const deleteServiceFromSupabase = async (serviceId: string) => {
+  try {
+    await supabase.from('services').delete().eq('id', serviceId);
+  } catch (e) {}
+};
+
+/**
+ * Sync gallery image to Supabase `gallery_images` table
+ */
+export const syncGalleryImageToSupabase = async (image: GalleryImage) => {
+  try {
+    const payload = {
+      id: image.id,
+      title: image.title,
+      category: image.category,
+      url: image.url,
+      tag: image.tag
+    };
+    await supabase.from('gallery_images').upsert(payload, { onConflict: 'id' });
+  } catch (e) {}
+};
+
+/**
+ * Fetch gallery images from Supabase
+ */
+export const fetchGalleryFromSupabase = async (): Promise<GalleryImage[]> => {
+  try {
+    const { data, error } = await supabase.from('gallery_images').select('*');
+    if (error || !data || data.length === 0) return [];
+    return data.map((g: any) => ({
+      id: g.id,
+      title: g.title,
+      category: g.category,
+      url: g.url,
+      tag: g.tag
+    }));
+  } catch (e) {
+    return [];
+  }
+};
+
+/**
+ * Delete gallery image from Supabase
+ */
+export const deleteGalleryImageFromSupabase = async (imageId: string) => {
+  try {
+    await supabase.from('gallery_images').delete().eq('id', imageId);
+  } catch (e) {}
 };
 
 /**
@@ -266,7 +437,7 @@ export const syncOrderToSupabase = async (order: Order) => {
  */
 export const uploadSalonImageToSupabase = async (file: File): Promise<string> => {
   try {
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop() || 'png';
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
     const filePath = `styles/${fileName}`;
 
@@ -274,19 +445,27 @@ export const uploadSalonImageToSupabase = async (file: File): Promise<string> =>
       .from('salon-images')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: true
       });
 
     if (uploadError) {
-      console.warn('Supabase image upload warning, falling back to local URL:', uploadError.message);
-      return URL.createObjectURL(file);
+      console.warn('Supabase image upload warning, falling back to base64 reader:', uploadError.message);
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
     }
 
     const { data } = supabase.storage.from('salon-images').getPublicUrl(filePath);
     return data.publicUrl;
   } catch (err) {
     console.warn('Upload error, using fallback:', err);
-    return URL.createObjectURL(file);
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
   }
 };
 
@@ -295,7 +474,7 @@ export const uploadSalonImageToSupabase = async (file: File): Promise<string> =>
  */
 export const uploadPaymentProofToSupabase = async (file: File): Promise<string> => {
   try {
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop() || 'png';
     const fileName = `proof_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
     const filePath = `receipts/${fileName}`;
 
@@ -303,18 +482,26 @@ export const uploadPaymentProofToSupabase = async (file: File): Promise<string> 
       .from('payment-proofs')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: true
       });
 
     if (uploadError) {
-      console.warn('Supabase proof upload warning, falling back to local URL:', uploadError.message);
-      return URL.createObjectURL(file);
+      console.warn('Supabase proof upload warning, falling back to base64 reader:', uploadError.message);
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
     }
 
     const { data } = supabase.storage.from('payment-proofs').getPublicUrl(filePath);
     return data.publicUrl;
   } catch (err) {
     console.warn('Upload error, using fallback:', err);
-    return URL.createObjectURL(file);
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
   }
 };
