@@ -191,12 +191,20 @@ export const refreshAllFromSupabase = async () => {
     }
 
     if (remoteServices && remoteServices.length > 0) {
-      globalServices = remoteServices;
+      const serviceMap = new Map<string, ServiceItem>();
+      // Keep all default services
+      SALON_SERVICES.forEach(s => serviceMap.set(s.id, s));
+      // Overwrite/add with updated remote services from Supabase
+      remoteServices.forEach(s => serviceMap.set(s.id, s));
+      globalServices = Array.from(serviceMap.values());
       changed = true;
     }
 
     if (remoteGallery && remoteGallery.length > 0) {
-      globalGallery = remoteGallery;
+      const galleryMap = new Map<string, GalleryImage>();
+      INITIAL_GALLERY_IMAGES.forEach(g => galleryMap.set(g.id, g));
+      remoteGallery.forEach(g => galleryMap.set(g.id, g));
+      globalGallery = Array.from(galleryMap.values());
       changed = true;
     }
 
