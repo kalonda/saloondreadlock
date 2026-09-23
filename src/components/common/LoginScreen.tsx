@@ -200,26 +200,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     // Strict Rejection
     setErrorMessage(
       lang === 'sw'
-        ? 'Jina la mtumiaji au nenosiri si sahihi. Kama huna akaunti bado, tafadhali bofya "Jisajili Hapa" hapo chini au tumia Google.'
-        : 'Invalid username or password. If you do not have an account yet, please click "Sign Up" below or continue with Google.'
+        ? 'Jina la mtumiaji au nenosiri si sahihi. Kama huna akaunti bado, tafadhali bofya "Huna akaunti? Jisajili kwa Barua Pepe" hapo chini.'
+        : 'Invalid username or password. If you do not have an account yet, please click "No account? Sign up with Email" below.'
     );
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
-    setErrorMessage('');
-    try {
-      const { signInWithGoogleOAuth } = await import('../../lib/supabaseClient');
-      await signInWithGoogleOAuth();
-    } catch (err: any) {
-      console.warn('Google sign in error:', err);
-      setIsGoogleLoading(false);
-      setErrorMessage(
-        lang === 'sw'
-          ? 'Kuna tatizo la kuunganisha na Google. Tafadhali hakikisha umeweka Site URL kwenye Supabase au tumia barua pepe na nenosiri.'
-          : (err.message || 'Google sign in error. Please check Supabase Redirect URL settings.')
-      );
-    }
   };
 
   return (
@@ -230,13 +213,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-100"
         style={{ backgroundImage: `url(${loginBgImage})` }}
       >
-        {/* Soft, visible overlay so the photo details are crisp and clear */}
+        {/* Soft visible overlay so the hairstyle photo details are crisp and clear */}
         <div className="absolute inset-0 bg-black/40"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-black/25 to-slate-950/70"></div>
       </div>
 
-      {/* Top Header Bar */}
-      <div className="relative z-10 max-w-6xl w-full mx-auto flex items-center justify-between">
+      {/* Top Header Bar with high z-index */}
+      <div className="relative z-50 max-w-6xl w-full mx-auto flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center space-x-3">
           <div className="w-11 h-11 rounded-2xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/50 border border-purple-400/40">
@@ -266,10 +249,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             onClick={() => setLangMenuOpen(!langMenuOpen)}
             className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer shadow-lg active:scale-95"
             style={{ 
-              backgroundColor: 'rgba(15, 23, 42, 0.85)',
-              borderColor: 'rgba(168, 85, 247, 0.5)',
+              backgroundColor: 'rgba(15, 23, 42, 0.90)',
+              borderColor: 'rgba(168, 85, 247, 0.6)',
               color: '#ffffff',
-              backdropFilter: 'blur(8px)'
+              backdropFilter: 'blur(12px)'
             }}
           >
             <Globe className="w-4 h-4 text-purple-400" />
@@ -278,11 +261,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
           {langMenuOpen && (
             <div 
-              className="absolute right-0 mt-2 w-48 rounded-2xl border shadow-2xl py-1.5 z-50 overflow-hidden"
+              className="absolute right-0 mt-2 w-48 rounded-2xl border shadow-2xl py-1.5 z-[100] overflow-hidden"
               style={{
                 backgroundColor: '#0f172a',
-                borderColor: '#334155',
-                boxShadow: '0 20px 30px rgba(0, 0, 0, 0.7)'
+                borderColor: '#475569',
+                boxShadow: '0 25px 50px rgba(0, 0, 0, 0.9)'
               }}
             >
               <button
@@ -337,14 +320,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
       </div>
 
-      {/* Main Center Login Glass Card */}
+      {/* Main Center Login Glass Card (Semi-transparent with frosted glass effect) */}
       <div className="relative z-10 w-full max-w-md mx-auto my-auto py-4 sm:py-6">
         <div 
           className="rounded-3xl border border-purple-500/35 shadow-2xl p-6 sm:p-8 space-y-5"
           style={{ 
-            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+            backgroundColor: 'rgba(15, 23, 42, 0.70)',
             backdropFilter: 'blur(16px)',
-            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(168, 85, 247, 0.2)'
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(168, 85, 247, 0.25)'
           }}
         >
           {/* Top Lock Icon & Headings */}
@@ -364,8 +347,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <span 
                 className="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border"
                 style={{ 
-                  backgroundColor: 'rgba(168, 85, 247, 0.2)',
-                  borderColor: 'rgba(168, 85, 247, 0.45)',
+                  backgroundColor: 'rgba(168, 85, 247, 0.25)',
+                  borderColor: 'rgba(168, 85, 247, 0.5)',
                   color: '#f3e8ff'
                 }}
               >
@@ -379,37 +362,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             >
               {t.auth.staffNotice}
             </p>
-          </div>
-
-          {/* Google Sign In Button */}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading}
-            className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 font-bold text-xs sm:text-sm flex items-center justify-center space-x-3 shadow-xl transition-all active:scale-98 cursor-pointer border border-slate-200"
-            style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
-          >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-            </svg>
-            <span style={{ color: '#0f172a' }}>
-              {isGoogleLoading ? (lang === 'sw' ? 'Inaunganisha Google...' : 'Connecting Google...') : t.auth.googleSignIn}
-            </span>
-          </button>
-
-          {/* Divider */}
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-700"></div>
-            <span 
-              className="flex-shrink mx-3 text-[11px] uppercase tracking-wider font-bold"
-              style={{ color: '#cbd5e1' }}
-            >
-              {t.auth.orWithCredentials}
-            </span>
-            <div className="flex-grow border-t border-slate-700"></div>
           </div>
 
           {/* Credentials Form */}
@@ -434,9 +386,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     placeholder={lang === 'sw' ? 'mfano: Aisha Ally' : 'e.g. Jane Doe'}
                     className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                     style={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      backgroundColor: 'rgba(15, 23, 42, 0.85)',
                       color: '#ffffff',
-                      borderColor: '#475569'
+                      borderColor: 'rgba(168, 85, 247, 0.4)'
                     }}
                   />
                 </div>
@@ -453,9 +405,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     placeholder="+255 7..."
                     className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                     style={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                      backgroundColor: 'rgba(15, 23, 42, 0.85)',
                       color: '#ffffff',
-                      borderColor: '#475569'
+                      borderColor: 'rgba(168, 85, 247, 0.4)'
                     }}
                   />
                 </div>
@@ -474,9 +426,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 placeholder={lang === 'sw' ? 'Weka barua pepe au namba ya simu...' : 'Enter email or phone number...'}
                 className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                 style={{ 
-                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
                   color: '#ffffff',
-                  borderColor: '#475569'
+                  borderColor: 'rgba(168, 85, 247, 0.4)'
                 }}
               />
             </div>
@@ -493,9 +445,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 placeholder="••••••••"
                 className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                 style={{ 
-                  backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
                   color: '#ffffff',
-                  borderColor: '#475569'
+                  borderColor: 'rgba(168, 85, 247, 0.4)'
                 }}
               />
             </div>

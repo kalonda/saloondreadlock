@@ -9,9 +9,10 @@ import {
   PaymentProof, 
   MobileMoneyProvider, 
   OrderStatus,
-  DashboardMetrics 
+  DashboardMetrics,
+  SalonTillInfo 
 } from '../types';
-import { INITIAL_STAFF, MANAGER_USER, INITIAL_SAMPLE_ORDERS } from '../data/mockData';
+import { INITIAL_STAFF, MANAGER_USER, INITIAL_SAMPLE_ORDERS, SALON_TILL_DETAILS } from '../data/mockData';
 import { SALON_SERVICES } from '../data/services';
 import { INITIAL_GALLERY_IMAGES, GalleryImage } from '../data/imageGallery';
 import { supabase, syncProfileToSupabase, syncOrderToSupabase, fetchProfilesFromSupabase, ensureManagerRegisteredInSupabase, deleteProfileFromSupabase } from '../lib/supabaseClient';
@@ -26,7 +27,8 @@ const STORAGE_KEYS = {
   CART: 'saloon_ms_cart',
   SERVICES: 'saloon_ms_services',
   GALLERY: 'saloon_ms_gallery',
-  REGISTERED_USERS: 'saloon_ms_registered_users'
+  REGISTERED_USERS: 'saloon_ms_registered_users',
+  TILL_DETAILS: 'saloon_till_details'
 };
 
 // Global Store State
@@ -90,6 +92,14 @@ let globalCart: SelectedServiceItem[] = (() => {
   return [];
 })();
 
+let globalTillDetails: SalonTillInfo[] = (() => {
+  const saved = localStorage.getItem(STORAGE_KEYS.TILL_DETAILS);
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  }
+  return SALON_TILL_DETAILS;
+})();
+
 const listeners = new Set<() => void>();
 
 const notify = () => {
@@ -106,6 +116,7 @@ const saveToLocalStorage = () => {
   localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(globalServices));
   localStorage.setItem(STORAGE_KEYS.GALLERY, JSON.stringify(globalGallery));
   localStorage.setItem(STORAGE_KEYS.REGISTERED_USERS, JSON.stringify(globalRegisteredUsers));
+  localStorage.setItem(STORAGE_KEYS.TILL_DETAILS, JSON.stringify(globalTillDetails));
 };
 
 // Apply theme to document
@@ -659,6 +670,19 @@ export const salonStore = {
 
   getRegisteredUsers: () => globalRegisteredUsers,
 
+  getTillDetails: () => globalTillDetails,
+
+  updateTillDetails: (provider: MobileMoneyProvider, updates: Partial<SalonTillInfo>) => {
+    globalTillDetails = globalTillDetails.map(item => {
+      if (item.provider === provider) {
+        return { ...item, ...updates };
+      }
+      return item;
+    });
+    saveToLocalStorage();
+    notify();
+  },
+
   getMetrics: (
     filterPeriod: 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all' = 'today',
     customStartDate?: string,
@@ -764,6 +788,8 @@ export const useSalonStore = () => {
     updateUserProfile: salonStore.updateUserProfile,
     registerUser: salonStore.registerUser,
     getMetrics: salonStore.getMetrics,
+    tillDetails: salonStore.getTillDetails(),
+    updateTillDetails: salonStore.updateTillDetails,
     managerUser: MANAGER_USER
   };
 };

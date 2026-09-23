@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Order, MobileMoneyProvider } from '../../types';
 import { useSalonStore } from '../../store/salonStore';
 import { getTranslation, formatCurrency } from '../../i18n';
-import { SALON_TILL_DETAILS } from '../../data/mockData';
 import { 
   X, 
   Copy, 
@@ -28,7 +27,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onClose,
   onPaymentSubmitted 
 }) => {
-  const { lang, submitPaymentProof, orders } = useSalonStore();
+  const { lang, submitPaymentProof, orders, tillDetails } = useSalonStore();
   const t = getTranslation(lang);
 
   const [selectedProvider, setSelectedProvider] = useState<MobileMoneyProvider>('mpesa');
@@ -44,7 +43,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   if (!isOpen || !liveOrder) return null;
 
-  const currentTillInfo = SALON_TILL_DETAILS.find(item => item.provider === selectedProvider) || SALON_TILL_DETAILS[0];
+  const currentTillInfo = tillDetails.find(item => item.provider === selectedProvider) || tillDetails[0];
 
   const handleCopyTill = () => {
     navigator.clipboard.writeText(currentTillInfo.tillNumber);
@@ -182,7 +181,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               Chagua Mtandao wa Malipo:
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {SALON_TILL_DETAILS.map((prov) => {
+              {tillDetails.map((prov) => {
                 const isSelected = selectedProvider === prov.provider;
                 return (
                   <button

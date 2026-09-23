@@ -26,6 +26,7 @@ import {
 import { ServiceCrudModal } from './ServiceCrudModal';
 import { ImageLibraryModal } from './ImageLibraryModal';
 import { StaffCrudModal } from './StaffCrudModal';
+import { PaymentSettingsModal } from './PaymentSettingsModal';
 import { AndroidSuccessModal } from '../common/AndroidSuccessModal';
 
 export interface ManagerDashboardProps {
@@ -49,6 +50,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
 
   const { 
     lang, 
+    currentUser,
     orders, 
     services, 
     staffList, 
@@ -60,6 +62,11 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
     managerUser 
   } = useSalonStore();
   const t = getTranslation(lang);
+
+  const activeManager = (currentUser?.role === 'manager' ? currentUser : null) || managerUser;
+
+  // Mobile Payment Settings Modal State
+  const [showPaymentSettingsModal, setShowPaymentSettingsModal] = useState(false);
 
   // Overview Date Filter
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all'>('today');
@@ -230,34 +237,54 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
         <div className="space-y-6">
           {/* Overview Contextual Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="p-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  <ShieldCheck className="w-4 h-4" />
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                  {managerUser.name} ({managerUser.username})
-                </span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <img 
+                src={activeManager.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'} 
+                alt={activeManager.name}
+                className="w-14 h-14 rounded-2xl object-cover border-2 border-purple-500/60 shadow-lg shadow-purple-900/30 shrink-0" 
+              />
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-base sm:text-lg font-black text-white tracking-tight">
+                    {activeManager.name}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    {lang === 'sw' ? 'Meneja' : 'Manager'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-slate-400 mt-0.5">
+                  <span>@{activeManager.username || (activeManager.email ? activeManager.email.split('@')[0] : 'admin')}</span>
+                  <span>•</span>
+                  <span>{activeManager.phone || '+255 754 111 222'}</span>
+                </div>
+                <p className="text-xs text-purple-300/80 font-medium mt-1">
+                  {t.managerDashboard.title}
+                </p>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-1">
-                {t.managerDashboard.title}
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                {t.managerDashboard.subtitle}
-              </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedStaffForEdit(null);
-                setShowStaffCrudModal(true);
-              }}
-              className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center space-x-2 shadow-lg shadow-purple-900/30 transition-all cursor-pointer self-start sm:self-auto"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>{t.managerDashboard.manageStaffBtn}</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setShowPaymentSettingsModal(true)}
+                className="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center space-x-2 shadow transition-all cursor-pointer"
+              >
+                <Smartphone className="w-4 h-4 text-amber-400" />
+                <span>{lang === 'sw' ? 'Lipa Namba' : 'Payment Settings'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedStaffForEdit(null);
+                  setShowStaffCrudModal(true);
+                }}
+                className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center space-x-2 shadow-lg shadow-purple-900/30 transition-all cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{t.managerDashboard.manageStaffBtn}</span>
+              </button>
+            </div>
           </div>
 
           {/* Date Filter Bar with Custom Interval Support */}
@@ -407,7 +434,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
         <div className="space-y-6">
           {/* SECTION 1: Pending Payment Verifications */}
           <div id="orders-verification" className="p-5 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                   <Smartphone className="w-5 h-5" />
@@ -419,11 +446,21 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                   <p className="text-xs text-slate-400">Uhakiki wa miamala ya Lipa Namba (M-Pesa, Mix by Yas, Airtel, Halopesa)</p>
                 </div>
               </div>
-              {pendingVerifications.length > 0 && (
-                <span className="px-3 py-1 rounded-full bg-rose-500 text-white font-bold text-xs">
-                  {pendingVerifications.length} Zinasubiri
-                </span>
-              )}
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentSettingsModal(true)}
+                  className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Hariri Taarifa za Malipo (Lipa Namba)</span>
+                </button>
+                {pendingVerifications.length > 0 && (
+                  <span className="px-3 py-1 rounded-full bg-rose-500 text-white font-bold text-xs">
+                    {pendingVerifications.length} Zinasubiri
+                  </span>
+                )}
+              </div>
             </div>
 
             {pendingVerifications.length === 0 ? (
@@ -1004,6 +1041,19 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
           setTargetServiceForImage(null);
         }}
         targetService={targetServiceForImage}
+      />
+
+      {/* PAYMENT SETTINGS MODAL */}
+      <PaymentSettingsModal
+        isOpen={showPaymentSettingsModal}
+        onClose={() => setShowPaymentSettingsModal(false)}
+        onSuccess={(msg) => {
+          setSuccessModal({
+            isOpen: true,
+            title: lang === 'sw' ? 'Malipo Yamehifadhiwa!' : 'Payment Details Saved!',
+            message: msg
+          });
+        }}
       />
 
       {/* ANDROID SUCCESS CONFIRMATION MODAL */}
