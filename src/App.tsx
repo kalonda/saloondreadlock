@@ -199,8 +199,8 @@ export function App() {
             <span>— Akaunti ya {userRole === 'manager' ? 'Meneja' : userRole === 'staff' ? 'Mhudumu' : 'Mteja'}</span>
           </div>
 
-          <div className="flex items-center space-x-3 text-[11px]">
-            <span className="text-emerald-400 font-semibold">Supabase Connected</span>
+          <div className="flex items-center space-x-3 text-[11px] text-slate-400">
+            <span>Dreadlocks & Hair Styling</span>
             <span>•</span>
             <span>Swahili (TZ) | English | Français</span>
           </div>

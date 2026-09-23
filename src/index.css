@@ -85,7 +85,7 @@ html.light {
 
 html.light .bg-\[\#090d16\],
 html.light .bg-slate-950 {
-  background-color: #f8fafc !important;
+  background-color: #f1f5f9 !important;
 }
 
 html.light .bg-slate-900,
@@ -94,7 +94,7 @@ html.light .bg-slate-900\/90,
 html.light .bg-slate-900\/80,
 html.light .bg-slate-900\/60 {
   background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
   color: #0f172a;
 }
 
@@ -104,8 +104,8 @@ html.light .bg-slate-800\/80,
 html.light .bg-slate-800\/70,
 html.light .bg-slate-800\/60,
 html.light .bg-slate-800\/40 {
-  background-color: #f1f5f9 !important;
-  border-color: #e2e8f0 !important;
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* Headings and Titles in Light Mode */
@@ -118,21 +118,25 @@ html.light h6 {
   color: #0f172a !important;
 }
 
-/* Text Colors */
+/* Text Colors - High Contrast & Crisp Readability in Light Mode */
 html.light .text-slate-100 {
   color: #0f172a !important;
 }
 
 html.light .text-slate-200 {
-  color: #1e293b !important;
+  color: #0f172a !important;
 }
 
 html.light .text-slate-300 {
-  color: #334155 !important;
+  color: #1e293b !important;
 }
 
 html.light .text-slate-400 {
-  color: #64748b !important;
+  color: #334155 !important;
+}
+
+html.light .text-slate-500 {
+  color: #475569 !important;
 }
 
 /* CRITICAL: Keep White Text on Primary & Accent Colored Action Buttons & Badges */

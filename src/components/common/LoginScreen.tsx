@@ -6,7 +6,8 @@ import {
   Lock, 
   Scissors, 
   Globe, 
-  ArrowRight
+  ArrowRight,
+  Sparkles
 } from 'lucide-react';
 import { ensureManagerRegisteredInSupabase } from '../../lib/supabaseClient';
 
@@ -27,7 +28,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [signUpSuccess, setSignUpSuccess] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +74,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       } catch (err: any) {
         setIsGoogleLoading(false);
-        // If Supabase network or auth fails, register locally
         const newClient: User = {
           id: `cust-${Date.now()}`,
           name: fullName.trim() || trimmedUser.split('@')[0],
@@ -174,6 +173,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         return;
       }
     } catch (e) {}
+
     if (trimmedUser.includes('@')) {
       try {
         const { signInWithEmail } = await import('../../lib/supabaseClient');
@@ -193,14 +193,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           onLoginSuccess(clientUser);
           return;
         }
-      } catch (e: any) {
-        // Continue to reject
-      }
+      } catch (e: any) {}
     }
 
-    // =========================================================================
-    // 6. STRICT REJECTION: If no account matched, DO NOT ALLOW LOGIN!
-    // =========================================================================
+    // Strict Rejection
     setErrorMessage(
       lang === 'sw'
         ? 'Jina la mtumiaji au nenosiri si sahihi. Kama huna akaunti bado, tafadhali bofya "Jisajili Hapa" hapo chini au tumia Google.'
@@ -226,27 +222,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#090d16] text-slate-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans overflow-x-hidden">
-      
-      {/* Top Bar: Brand & Language Toggle */}
-      <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-md">
+    <div className="relative min-h-screen w-full flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans overflow-x-hidden">
+      {/* Background Image with Dark Overlay */}
+      <div 
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
+        style={{ backgroundImage: `url('/login-bg.png')` }}
+      >
+        {/* Dark overlay gradient */}
+        <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md"></div>
+      </div>
+
+      {/* Content Container */}
+      <div className="relative z-10 max-w-6xl w-full mx-auto flex items-center justify-between">
+        {/* Top Brand Logo */}
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-2xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/40">
             <Scissors className="w-5 h-5" />
           </div>
           <div>
-            <span className="font-bold text-lg text-white">Saloon MS</span>
-            <span className="text-[10px] text-amber-400 font-bold ml-1.5 uppercase px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-              Luxe
-            </span>
+            <h1 className="font-black text-sm sm:text-base text-white tracking-tight uppercase">
+              DREADLOCKS AND HAIR DRESSING SALOON
+            </h1>
+            <p className="text-[10px] text-purple-300 font-semibold uppercase tracking-wider flex items-center space-x-1">
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>Premium Hair Styling & Beauty</span>
+            </p>
           </div>
         </div>
 
         {/* Language Dropdown */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setLangMenuOpen(!langMenuOpen)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900/80 backdrop-blur-sm border border-slate-700 text-xs font-bold text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <Globe className="w-3.5 h-3.5 text-purple-400" />
             <span className="uppercase">{lang}</span>
@@ -260,7 +269,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   lang === 'sw' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-300'
                 }`}
               >
-                <span>🇹🇿 Kiswahili (Default)</span>
+                <span>🇹🇿 Kiswahili</span>
                 {lang === 'sw' && <span>✓</span>}
               </button>
               <button
@@ -286,18 +295,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
       </div>
 
-      {/* Main Center Login Card */}
-      <div className="w-full max-w-md mx-auto my-auto py-8">
-        <div className="rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-6 sm:p-8 space-y-6">
+      {/* Main Center Login Glass Card */}
+      <div className="relative z-10 w-full max-w-md mx-auto my-auto py-6">
+        <div className="rounded-3xl bg-slate-950/80 backdrop-blur-xl border border-slate-800/80 shadow-2xl p-6 sm:p-8 space-y-5">
           
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 text-purple-400 flex items-center justify-center mx-auto shadow">
+          <div className="text-center space-y-1.5">
+            <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/30 text-purple-300 flex items-center justify-center mx-auto shadow-inner">
               <Lock className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-black text-white tracking-tight">
-              {isSignUpMode ? (lang === 'sw' ? 'Jisajili na Saloon MS' : 'Create Account') : t.auth.signIn}
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              {isSignUpMode ? (lang === 'sw' ? 'Fungua Akaunti Mpya' : 'Create Account') : t.auth.signIn}
             </h2>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto">
+            <p className="text-xs text-purple-200 font-bold tracking-tight uppercase">
+              DREADLOCKS AND HAIR DRESSING SALOON
+            </p>
+            <p className="text-[11px] text-slate-400 max-w-xs mx-auto pt-0.5">
               {t.auth.staffNotice}
             </p>
           </div>
@@ -307,7 +319,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
-            className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm flex items-center justify-center space-x-3 shadow transition-all active:scale-98 cursor-pointer border border-slate-200"
+            className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm flex items-center justify-center space-x-3 shadow-lg transition-all active:scale-98 cursor-pointer border border-slate-200"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -321,16 +333,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           {/* Divider */}
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-slate-800"></div>
-            <span className="flex-shrink mx-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
+            <span className="flex-shrink mx-3 text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
               {t.auth.orWithCredentials}
             </span>
             <div className="flex-grow border-t border-slate-800"></div>
           </div>
 
           {/* Credentials Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-3.5">
             {errorMessage && (
-              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold text-center">
+              <div className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold text-center leading-relaxed">
                 {errorMessage}
               </div>
             )}
@@ -347,7 +359,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder={lang === 'sw' ? 'mfano: Aisha Ally' : 'e.g. Jane Doe'}
-                    className="w-full p-3 rounded-2xl bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
+                    className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-700 text-white text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
                   />
                 </div>
 
@@ -361,7 +373,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+255 7..."
-                    className="w-full p-3 rounded-2xl bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
+                    className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-700 text-white text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
                   />
                 </div>
               </>
@@ -377,7 +389,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder={lang === 'sw' ? 'Weka barua pepe au namba ya simu...' : 'Enter email or phone number...'}
-                className="w-full p-3 rounded-2xl bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
+                className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-700 text-white text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
               />
             </div>
 
@@ -391,21 +403,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full p-3 rounded-2xl bg-slate-800 border border-slate-700 text-slate-100 text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
+                className="w-full p-3 rounded-2xl bg-slate-900 border border-slate-700 text-white text-xs sm:text-sm focus:border-purple-500 focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={isGoogleLoading}
-              className="w-full py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all active:scale-98 flex items-center justify-center space-x-2 cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs sm:text-sm shadow-xl shadow-purple-900/40 transition-all active:scale-98 flex items-center justify-center space-x-2 cursor-pointer mt-2"
             >
               <span>{isSignUpMode ? (lang === 'sw' ? 'Kamilisha Usajili' : 'Sign Up') : t.auth.loginBtn}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
             {/* Toggle Sign Up / Login */}
-            <div className="text-center pt-1">
+            <div className="text-center pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -424,9 +436,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
       </div>
 
-      {/* Footer info */}
-      <div className="text-center text-xs text-slate-500">
-        Saloon MS Luxe &copy; 2026 • {t.app.crossPlatform}
+      {/* Footer info with Salon Name */}
+      <div className="relative z-10 text-center text-xs text-slate-400 font-medium pb-2">
+        <span className="font-bold text-slate-300">DREADLOCKS AND HAIR DRESSING SALOON</span>
+        <span className="mx-2">•</span>
+        <span>{lang === 'sw' ? 'Huduma Bora ya Nywele & Urembo' : 'Premium Hair & Beauty Care'}</span>
       </div>
     </div>
   );
