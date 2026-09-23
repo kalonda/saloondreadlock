@@ -7,10 +7,10 @@ import {
   Scissors, 
   Globe, 
   ArrowRight,
-  Sparkles,
-  ShieldCheck
+  Sparkles
 } from 'lucide-react';
 import { ensureManagerRegisteredInSupabase } from '../../lib/supabaseClient';
+import loginBgImage from '../../assets/login-bg.png';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: User) => void;
@@ -225,33 +225,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   return (
     <div className="login-dark-surface relative min-h-screen w-full flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans overflow-x-hidden select-none">
       
-      {/* Background Salon Hero Image with Dark Radial & Linear Overlay */}
+      {/* Background Salon Hero Image with Soft, Elegant Overlay */}
       <div 
-        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-105"
-        style={{ backgroundImage: `url('/login-bg.png')` }}
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-100"
+        style={{ backgroundImage: `url(${loginBgImage})` }}
       >
-        {/* Dark Vignette Overlay for maximum contrast */}
-        <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/90"></div>
+        {/* Soft, visible overlay so the photo details are crisp and clear */}
+        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-black/25 to-slate-950/70"></div>
       </div>
 
       {/* Top Header Bar */}
       <div className="relative z-10 max-w-6xl w-full mx-auto flex items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center space-x-3">
-          <div className="w-11 h-11 rounded-2xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/50 border border-purple-400/30">
+          <div className="w-11 h-11 rounded-2xl bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-600/50 border border-purple-400/40">
             <Scissors className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 
               className="font-black text-sm sm:text-base tracking-tight uppercase"
-              style={{ color: '#ffffff', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}
+              style={{ color: '#ffffff', textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}
             >
               DREADLOCKS AND HAIR DRESSING SALOON
             </h1>
             <p 
               className="text-[10px] font-bold uppercase tracking-wider flex items-center space-x-1"
-              style={{ color: '#d8b4fe' }}
+              style={{ color: '#e9d5ff', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
             >
               <Sparkles className="w-3 h-3 text-amber-400 inline" />
               <span>Premium Hair Styling & Beauty Care</span>
@@ -264,41 +264,73 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           <button
             type="button"
             onClick={() => setLangMenuOpen(!langMenuOpen)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer shadow-md"
-            style={{ color: '#ffffff' }}
+            className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer shadow-lg active:scale-95"
+            style={{ 
+              backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              borderColor: 'rgba(168, 85, 247, 0.5)',
+              color: '#ffffff',
+              backdropFilter: 'blur(8px)'
+            }}
           >
-            <Globe className="w-3.5 h-3.5 text-purple-400" />
-            <span className="uppercase font-bold">{lang}</span>
+            <Globe className="w-4 h-4 text-purple-400" />
+            <span className="uppercase font-black tracking-wider" style={{ color: '#ffffff' }}>{lang}</span>
           </button>
 
           {langMenuOpen && (
-            <div className="absolute right-0 mt-2 w-44 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl py-1 z-50 overflow-hidden">
+            <div 
+              className="absolute right-0 mt-2 w-48 rounded-2xl border shadow-2xl py-1.5 z-50 overflow-hidden"
+              style={{
+                backgroundColor: '#0f172a',
+                borderColor: '#334155',
+                boxShadow: '0 20px 30px rgba(0, 0, 0, 0.7)'
+              }}
+            >
               <button
+                type="button"
                 onClick={() => { setLanguage('sw'); setLangMenuOpen(false); }}
-                className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between hover:bg-slate-800 ${
-                  lang === 'sw' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-200'
-                }`}
+                className="w-full text-left px-4 py-2.5 text-xs font-bold flex items-center justify-between hover:bg-slate-800 transition-colors cursor-pointer"
+                style={{ 
+                  color: lang === 'sw' ? '#c084fc' : '#ffffff', 
+                  backgroundColor: lang === 'sw' ? 'rgba(168, 85, 247, 0.2)' : 'transparent' 
+                }}
               >
-                <span>🇹🇿 Kiswahili</span>
-                {lang === 'sw' && <span>✓</span>}
+                <span className="flex items-center space-x-2">
+                  <span className="text-base">🇹🇿</span>
+                  <span style={{ color: lang === 'sw' ? '#c084fc' : '#ffffff' }}>Kiswahili</span>
+                </span>
+                {lang === 'sw' && <span className="text-purple-400 font-black">✓</span>}
               </button>
+
               <button
+                type="button"
                 onClick={() => { setLanguage('en'); setLangMenuOpen(false); }}
-                className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between hover:bg-slate-800 ${
-                  lang === 'en' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-200'
-                }`}
+                className="w-full text-left px-4 py-2.5 text-xs font-bold flex items-center justify-between hover:bg-slate-800 transition-colors cursor-pointer"
+                style={{ 
+                  color: lang === 'en' ? '#c084fc' : '#ffffff', 
+                  backgroundColor: lang === 'en' ? 'rgba(168, 85, 247, 0.2)' : 'transparent' 
+                }}
               >
-                <span>🇬🇧 English</span>
-                {lang === 'en' && <span>✓</span>}
+                <span className="flex items-center space-x-2">
+                  <span className="text-base">🇬🇧</span>
+                  <span style={{ color: lang === 'en' ? '#c084fc' : '#ffffff' }}>English</span>
+                </span>
+                {lang === 'en' && <span className="text-purple-400 font-black">✓</span>}
               </button>
+
               <button
+                type="button"
                 onClick={() => { setLanguage('fr'); setLangMenuOpen(false); }}
-                className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between hover:bg-slate-800 ${
-                  lang === 'fr' ? 'text-purple-400 font-bold bg-purple-500/10' : 'text-slate-200'
-                }`}
+                className="w-full text-left px-4 py-2.5 text-xs font-bold flex items-center justify-between hover:bg-slate-800 transition-colors cursor-pointer"
+                style={{ 
+                  color: lang === 'fr' ? '#c084fc' : '#ffffff', 
+                  backgroundColor: lang === 'fr' ? 'rgba(168, 85, 247, 0.2)' : 'transparent' 
+                }}
               >
-                <span>🇫🇷 Français</span>
-                {lang === 'fr' && <span>✓</span>}
+                <span className="flex items-center space-x-2">
+                  <span className="text-base">🇫🇷</span>
+                  <span style={{ color: lang === 'fr' ? '#c084fc' : '#ffffff' }}>Français</span>
+                </span>
+                {lang === 'fr' && <span className="text-purple-400 font-black">✓</span>}
               </button>
             </div>
           )}
@@ -306,24 +338,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Main Center Login Glass Card */}
-      <div className="relative z-10 w-full max-w-md mx-auto my-auto py-6">
+      <div className="relative z-10 w-full max-w-md mx-auto my-auto py-4 sm:py-6">
         <div 
-          className="rounded-3xl border border-purple-500/30 shadow-2xl p-6 sm:p-8 space-y-5"
+          className="rounded-3xl border border-purple-500/35 shadow-2xl p-6 sm:p-8 space-y-5"
           style={{ 
             backgroundColor: 'rgba(15, 23, 42, 0.92)',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(168, 85, 247, 0.15)'
+            backdropFilter: 'blur(16px)',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(168, 85, 247, 0.2)'
           }}
         >
           {/* Top Lock Icon & Headings */}
           <div className="text-center space-y-2">
-            <div className="w-13 h-13 rounded-2xl bg-purple-600/25 border border-purple-500/40 text-purple-300 flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-13 h-13 rounded-2xl bg-purple-600/30 border border-purple-500/50 text-purple-300 flex items-center justify-center mx-auto shadow-inner">
               <Lock className="w-6 h-6 text-purple-300" />
             </div>
 
             <h2 
               className="text-2xl sm:text-3xl font-black tracking-tight"
-              style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.7)' }}
+              style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}
             >
               {isSignUpMode ? (lang === 'sw' ? 'Fungua Akaunti Mpya' : 'Create Account') : t.auth.signIn}
             </h2>
@@ -332,9 +364,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               <span 
                 className="inline-block px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border"
                 style={{ 
-                  backgroundColor: 'rgba(168, 85, 247, 0.15)',
-                  borderColor: 'rgba(168, 85, 247, 0.35)',
-                  color: '#e9d5ff'
+                  backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                  borderColor: 'rgba(168, 85, 247, 0.45)',
+                  color: '#f3e8ff'
                 }}
               >
                 DREADLOCKS AND HAIR DRESSING SALOON
@@ -343,7 +375,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
             <p 
               className="text-xs max-w-xs mx-auto pt-1 font-medium leading-relaxed"
-              style={{ color: '#cbd5e1' }}
+              style={{ color: '#e2e8f0' }}
             >
               {t.auth.staffNotice}
             </p>
@@ -355,7 +387,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
             className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 font-bold text-xs sm:text-sm flex items-center justify-center space-x-3 shadow-xl transition-all active:scale-98 cursor-pointer border border-slate-200"
-            style={{ color: '#0f172a' }}
+            style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -373,7 +405,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <div className="flex-grow border-t border-slate-700"></div>
             <span 
               className="flex-shrink mx-3 text-[11px] uppercase tracking-wider font-bold"
-              style={{ color: '#94a3b8' }}
+              style={{ color: '#cbd5e1' }}
             >
               {t.auth.orWithCredentials}
             </span>
@@ -400,7 +432,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder={lang === 'sw' ? 'mfano: Aisha Ally' : 'e.g. Jane Doe'}
-                    className="w-full p-3 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
+                    className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                     style={{ 
                       backgroundColor: 'rgba(15, 23, 42, 0.95)',
                       color: '#ffffff',
@@ -419,7 +451,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+255 7..."
-                    className="w-full p-3 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
+                    className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                     style={{ 
                       backgroundColor: 'rgba(15, 23, 42, 0.95)',
                       color: '#ffffff',
@@ -440,7 +472,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder={lang === 'sw' ? 'Weka barua pepe au namba ya simu...' : 'Enter email or phone number...'}
-                className="w-full p-3 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
+                className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                 style={{ 
                   backgroundColor: 'rgba(15, 23, 42, 0.95)',
                   color: '#ffffff',
@@ -459,7 +491,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full p-3 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
+                className="w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-medium focus:outline-none"
                 style={{ 
                   backgroundColor: 'rgba(15, 23, 42, 0.95)',
                   color: '#ffffff',
@@ -500,10 +532,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Footer info with Salon Name */}
-      <div className="relative z-10 text-center text-xs font-medium pb-2" style={{ color: '#94a3b8' }}>
-        <span className="font-bold" style={{ color: '#ffffff' }}>DREADLOCKS AND HAIR DRESSING SALOON</span>
+      <div className="relative z-10 text-center text-xs font-medium pb-2" style={{ color: '#cbd5e1' }}>
+        <span className="font-bold" style={{ color: '#ffffff', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+          DREADLOCKS AND HAIR DRESSING SALOON
+        </span>
         <span className="mx-2">•</span>
-        <span>{lang === 'sw' ? 'Huduma Bora ya Nywele & Urembo' : 'Premium Hair & Beauty Care'}</span>
+        <span style={{ color: '#e2e8f0' }}>
+          {lang === 'sw' ? 'Huduma Bora ya Nywele & Urembo' : 'Premium Hair & Beauty Care'}
+        </span>
       </div>
     </div>
   );
