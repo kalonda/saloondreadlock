@@ -171,12 +171,20 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab, onLog
                 title={t.app.accountLabel}
               >
                 {currentUser?.avatar ? (
-                  <img src={currentUser.avatar} alt={currentUser.name} className="w-7 h-7 rounded-full object-cover border border-purple-500/40" />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-purple-600/30 flex items-center justify-center text-purple-300">
-                    <UserIcon className="w-4 h-4" />
-                  </div>
-                )}
+                  <img 
+                    src={currentUser.avatar} 
+                    alt={currentUser.name} 
+                    className="w-7 h-7 rounded-full object-cover border border-purple-500/40" 
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.parentElement?.querySelector('.header-avatar-fallback');
+                      if (fallback) fallback.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`w-7 h-7 rounded-full bg-purple-600/30 flex items-center justify-center text-purple-300 ${currentUser?.avatar ? 'header-avatar-fallback hidden' : ''}`}>
+                  <UserIcon className="w-4 h-4" />
+                </div>
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-bold text-slate-200 truncate max-w-[90px]">{currentUser?.name?.split(' ')[0]}</p>
                   <p className="text-[9px] text-amber-400 font-semibold uppercase">{t.roles[userRole] || userRole}</p>
@@ -200,12 +208,20 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, setCurrentTab, onLog
                   }`}>
                     <div className="flex items-center space-x-2.5">
                       {currentUser?.avatar ? (
-                        <img src={currentUser.avatar} alt={currentUser.name} className="w-10 h-10 rounded-xl object-cover border border-purple-500/30" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-purple-600/30 flex items-center justify-center text-purple-400">
-                          <UserIcon className="w-5 h-5" />
-                        </div>
-                      )}
+                        <img 
+                          src={currentUser.avatar} 
+                          alt={currentUser.name} 
+                          className="w-10 h-10 rounded-xl object-cover border border-purple-500/30" 
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.parentElement?.querySelector('.dropdown-avatar-fallback');
+                            if (fallback) fallback.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-10 h-10 rounded-xl bg-purple-600/30 flex items-center justify-center text-purple-400 ${currentUser?.avatar ? 'dropdown-avatar-fallback hidden' : ''}`}>
+                        <UserIcon className="w-5 h-5" />
+                      </div>
                       <div>
                         <h4 className={`text-xs font-bold leading-tight ${theme === 'light' ? 'text-slate-900' : 'text-white'}`}>
                           {currentUser?.name}

@@ -822,7 +822,7 @@ export const salonStore = {
     notify();
   },
 
-  updateUserProfile: (updates: Partial<User>) => {
+  updateUserProfile: async (updates: Partial<User>) => {
     if (!globalUser) return;
     const updatedUser: User = {
       ...globalUser,
@@ -851,8 +851,8 @@ export const salonStore = {
     }
 
     saveToLocalStorage();
-    syncProfileToSupabase(updatedUser);
     notify();
+    await syncProfileToSupabase(updatedUser);
     return updatedUser;
   },
 

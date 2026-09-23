@@ -85,7 +85,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     setAvatar(undefined);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
 
@@ -128,7 +128,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       updates.password = newPassword.trim();
     }
 
-    updateUserProfile(updates);
+    await updateUserProfile(updates);
 
     setSuccessMessage(
       lang === 'sw' 

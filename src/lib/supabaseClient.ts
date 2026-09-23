@@ -171,10 +171,9 @@ export const syncProfileToSupabase = async (user: User) => {
     const existing = existingProfiles && existingProfiles.length > 0 ? existingProfiles[0] : null;
 
     if (existing && existing.id) {
-      // 2. Existing profile: Perform direct UPDATE on provided fields
+      // 2. Existing profile: Perform direct UPDATE on exact database columns
       const updatePayload: any = {
         name: user.name,
-        full_name: user.name,
         role: user.role,
         phone: user.phone || null,
         email: userEmail,
@@ -182,7 +181,6 @@ export const syncProfileToSupabase = async (user: User) => {
         salary: user.salary ? Number(user.salary) : null,
         specialization: user.specialization || null,
         avatar: user.avatar || null,
-        avatar_url: user.avatar || null,
         updated_at: new Date().toISOString()
       };
 
@@ -199,11 +197,10 @@ export const syncProfileToSupabase = async (user: User) => {
         console.warn('Supabase profile update warning:', updateError.message);
       }
     } else {
-      // 3. New profile: Insert with safe defaults (password not-null safe)
+      // 3. New profile: Insert with exact database columns & safe defaults
       const insertPayload: any = {
         username: userUsername,
         name: user.name,
-        full_name: user.name,
         password: user.password || (user.role === 'manager' ? 'juanclaudio' : '123'),
         role: user.role,
         phone: user.phone || null,
@@ -211,7 +208,6 @@ export const syncProfileToSupabase = async (user: User) => {
         salary: user.salary ? Number(user.salary) : null,
         specialization: user.specialization || null,
         avatar: user.avatar || null,
-        avatar_url: user.avatar || null,
         updated_at: new Date().toISOString()
       };
 

@@ -455,11 +455,24 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
           {/* Overview Contextual Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <img 
-                src={activeManager.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'} 
-                alt={activeManager.name}
-                className="w-14 h-14 rounded-2xl object-cover border-2 border-purple-500/60 shadow-lg shadow-purple-900/30 shrink-0" 
-              />
+              {activeManager.avatar ? (
+                <img 
+                  src={activeManager.avatar} 
+                  alt={activeManager.name}
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-purple-500/60 shadow-lg shadow-purple-900/30 shrink-0" 
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const fallback = parent.querySelector('.avatar-fallback');
+                      if (fallback) fallback.classList.remove('hidden');
+                    }
+                  }}
+                />
+              ) : null}
+              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 border-2 border-purple-500/60 shadow-lg shadow-purple-900/30 flex items-center justify-center text-white font-black text-lg shrink-0 ${activeManager.avatar ? 'avatar-fallback hidden' : ''}`}>
+                {activeManager.name ? activeManager.name.substring(0, 2).toUpperCase() : 'M'}
+              </div>
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="text-base sm:text-lg font-black text-white tracking-tight">
