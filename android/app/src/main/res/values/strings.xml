@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DREADLOCKS AND HAIR DRESSING SALOON</string>
+    <string name="title_activity_main">DREADLOCKS AND HAIR DRESSING SALOON</string>
+    <string name="package_name">com.saloon.crossplatform</string>
+    <string name="custom_url_scheme">com.saloon.crossplatform</string>
+</resources>
