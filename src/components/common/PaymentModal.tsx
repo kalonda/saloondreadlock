@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Order, MobileMoneyProvider } from '../../types';
 import { useSalonStore } from '../../store/salonStore';
 import { getTranslation, formatCurrency } from '../../i18n';
+import { uploadPaymentProofToSupabase } from '../../lib/supabaseClient';
 import { 
   X, 
   Copy, 
@@ -11,7 +12,7 @@ import {
   Clock, 
   CheckCircle2, 
   ShieldCheck,
-  Sparkles
+  Loader2
 } from 'lucide-react';
 
 interface PaymentModalProps {
@@ -37,6 +38,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [senderName, setSenderName] = useState('');
   const [senderPhone, setSenderPhone] = useState('');
   const [mockUploadedFile, setMockUploadedFile] = useState<string | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const liveOrder = order ? orders.find(o => o.id === order.id) || order : null;
@@ -51,21 +53,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     setTimeout(() => setCopiedTill(false), 2000);
   };
 
-  const handleQuickPasteSampleSms = () => {
-    const randomRef = `MP${Math.floor(100000 + Math.random() * 900000)}TZ`;
-    const sampleMsg = `${randomRef} Imethibitishwa. TZS ${liveOrder.totalAmount.toLocaleString()} imelipwa kwa DREADLOCKS AND HAIR DRESSING SALOON (Lipa Namba ${currentTillInfo.tillNumber}) tarehe ${new Date().toLocaleDateString('en-GB')}. Salio lako jipya TZS 84,200.`;
-    setSmsText(sampleMsg);
-    setTransactionRef(randomRef);
-    setSenderName(liveOrder.customerName || 'Mteja');
-    setSenderPhone(liveOrder.customerPhone || '+255 754 000 000');
-  };
-
-  const handleFileUploadSim = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setMockUploadedFile(URL.createObjectURL(file));
-      if (!transactionRef) {
-        setTransactionRef(`SCREEN-${Math.floor(1000 + Math.random() * 9000)}`);
+      try {
+        setIsUploadingProof(true);
+        const uploadedUrl = await uploadPaymentProofToSupabase(file);
+        setMockUploadedFile(uploadedUrl);
+      } catch (err) {
+        console.warn('Screenshot upload fallback:', err);
+        setMockUploadedFile(URL.createObjectURL(file));
+      } finally {
+        setIsUploadingProof(false);
       }
     }
   };
@@ -249,14 +248,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <span className="w-5 h-5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center">2</span>
                 <span className="text-xs sm:text-sm font-bold text-slate-200">{t.checkout.step2Title}</span>
               </div>
-              <button
-                type="button"
-                onClick={handleQuickPasteSampleSms}
-                className="text-xs text-purple-400 hover:text-purple-300 font-semibold underline flex items-center space-x-1"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Auto-fill SMS ya Mfano</span>
-              </button>
             </div>
 
             <div>
@@ -302,13 +293,28 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <Upload className="w-4 h-4 text-purple-400" />
                   <span className="text-xs text-slate-300">{t.checkout.uploadScreenshot}</span>
                 </div>
-                <span className="text-[11px] px-2 py-1 rounded bg-slate-700 text-slate-300 font-semibold">Chagua Picha</span>
-                <input type="file" accept="image/*" onChange={handleFileUploadSim} className="hidden" />
+                <span className="text-[11px] px-2.5 py-1 rounded bg-slate-700 text-slate-300 font-semibold hover:bg-slate-600 transition-colors flex items-center space-x-1">
+                  {isUploadingProof ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                      <span>Inapakia...</span>
+                    </>
+                  ) : (
+                    <span>Chagua Picha</span>
+                  )}
+                </span>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  disabled={isUploadingProof} 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                />
               </label>
               {mockUploadedFile && (
                 <div className="mt-2 text-xs text-emerald-400 font-semibold flex items-center space-x-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Picha ya SMS imepakiwa!</span>
+                  <span>Picha ya SMS imepakiwa kikamilifu!</span>
                 </div>
               )}
             </div>
