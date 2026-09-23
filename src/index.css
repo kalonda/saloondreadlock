@@ -108,35 +108,46 @@ html.light .bg-slate-800\/40 {
   border-color: #cbd5e1 !important;
 }
 
-/* Headings and Titles in Light Mode */
-html.light h1,
-html.light h2,
-html.light h3,
-html.light h4,
-html.light h5,
-html.light h6 {
-  color: #0f172a !important;
+/* Headings and Titles in Light Mode (except dark hero login screen) */
+html.light :not(.login-dark-surface):not(.login-dark-surface *) > h1,
+html.light :not(.login-dark-surface):not(.login-dark-surface *) > h2,
+html.light :not(.login-dark-surface):not(.login-dark-surface *) > h3,
+html.light :not(.login-dark-surface):not(.login-dark-surface *) > h4,
+html.light :not(.login-dark-surface):not(.login-dark-surface *) > h5,
+html.light :not(.login-dark-surface):not(.login-dark-surface *) > h6,
+html.light h1:not(.login-dark-surface *),
+html.light h2:not(.login-dark-surface *),
+html.light h3:not(.login-dark-surface *),
+html.light h4:not(.login-dark-surface *),
+html.light h5:not(.login-dark-surface *),
+html.light h6:not(.login-dark-surface *) {
+  color: #0f172a;
 }
 
-/* Text Colors - High Contrast & Crisp Readability in Light Mode */
-html.light .text-slate-100 {
-  color: #0f172a !important;
+/* Text Colors in Light Mode */
+html.light :not(.login-dark-surface *) > .text-slate-100,
+html.light .text-slate-100:not(.login-dark-surface *) {
+  color: #0f172a;
 }
 
-html.light .text-slate-200 {
-  color: #0f172a !important;
+html.light :not(.login-dark-surface *) > .text-slate-200,
+html.light .text-slate-200:not(.login-dark-surface *) {
+  color: #0f172a;
 }
 
-html.light .text-slate-300 {
-  color: #1e293b !important;
+html.light :not(.login-dark-surface *) > .text-slate-300,
+html.light .text-slate-300:not(.login-dark-surface *) {
+  color: #1e293b;
 }
 
-html.light .text-slate-400 {
-  color: #334155 !important;
+html.light :not(.login-dark-surface *) > .text-slate-400,
+html.light .text-slate-400:not(.login-dark-surface *) {
+  color: #334155;
 }
 
-html.light .text-slate-500 {
-  color: #475569 !important;
+html.light :not(.login-dark-surface *) > .text-slate-500,
+html.light .text-slate-500:not(.login-dark-surface *) {
+  color: #475569;
 }
 
 /* CRITICAL: Keep White Text on Primary & Accent Colored Action Buttons & Badges */
@@ -171,8 +182,50 @@ html.light .bg-red-600 * {
 }
 
 /* Specific text-white rule outside colored buttons */
-html.light :not(.bg-purple-600):not(.bg-purple-500):not(.bg-emerald-600):not(.bg-rose-500):not(.bg-rose-600):not(.bg-amber-600):not(.bg-indigo-600) > .text-white {
+html.light :not(.bg-purple-600):not(.bg-purple-500):not(.bg-emerald-600):not(.bg-rose-500):not(.bg-rose-600):not(.bg-amber-600):not(.bg-indigo-600):not(.login-dark-surface *) > .text-white {
   color: #0f172a;
+}
+
+/* LOGIN SCREEN DARK SURFACE SCOPE - ALWAYS HIGH CONTRAST AND STUNNING */
+.login-dark-surface {
+  color: #ffffff !important;
+}
+
+.login-dark-surface h1,
+.login-dark-surface h2,
+.login-dark-surface h3,
+.login-dark-surface .login-title,
+.login-dark-surface .login-heading {
+  color: #ffffff !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.login-dark-surface .login-subtitle {
+  color: #e9d5ff !important;
+}
+
+.login-dark-surface .login-label {
+  color: #f1f5f9 !important;
+  font-weight: 600;
+}
+
+.login-dark-surface .login-muted {
+  color: #cbd5e1 !important;
+}
+
+.login-dark-surface input {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+.login-dark-surface input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.login-dark-surface input:focus {
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.25) !important;
 }
 
 /* Borders & Dividers */
