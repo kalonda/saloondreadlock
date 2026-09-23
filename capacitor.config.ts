@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.saloon.crossplatform',
-  appName: 'Saloon MS Luxe',
+  appName: 'DREADLOCKS AND HAIR DRESSING SALOON',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

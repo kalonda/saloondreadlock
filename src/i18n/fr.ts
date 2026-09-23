@@ -99,7 +99,7 @@ export const fr = {
     cart: 'Panier'
   },
   auth: {
-    signIn: 'Connexion à Saloon MS',
+    signIn: 'Se Connecter',
     googleSignIn: 'Continuer avec Google',
     orWithCredentials: 'ou connectez-vous avec vos identifiants',
     username: 'Nom d\'utilisateur ou Téléphone',
@@ -174,7 +174,7 @@ export const fr = {
     copyTill: 'Copier Numéro',
     copied: 'Copié !',
     smsProofLabel: 'Collez le SMS de confirmation ou l\'ID de Transaction :',
-    smsProofPlaceholder: 'Ex: QC8921KL90 Confirmé. TZS 35,000 payé à SALOON MS LUXE...',
+    smsProofPlaceholder: 'Ex: QC8921KL90 Confirmé. TZS 35,000 payé à DREADLOCKS AND HAIR DRESSING SALOON...',
     uploadScreenshot: 'Ou Téléverser Capture d\'Écran du SMS',
     submitPaymentProof: 'Soumettre Preuve de Paiement',
     instantNotificationBadge: 'PAYÉ (En Attente de Validation du Directeur)',

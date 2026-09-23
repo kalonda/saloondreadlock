@@ -174,7 +174,7 @@ export const sw = {
     copyTill: 'Nakili Namba',
     copied: 'Imenakiliwa!',
     smsProofLabel: 'Weka ujumbe wa SMS uliopokea au Namba ya Muamala:',
-    smsProofPlaceholder: 'Mfano: QC8921KL90 Imethibitishwa. TZS 35,000 imelipwa kwa SALOON MS LUXE...',
+    smsProofPlaceholder: 'Mfano: QC8921KL90 Imethibitishwa. TZS 35,000 imelipwa kwa DREADLOCKS AND HAIR DRESSING SALOON...',
     uploadScreenshot: 'Au Pakia Picha ya Ujumbe (Screenshot)',
     submitPaymentProof: 'Wasilisha Malipo kwa Uhakiki',
     instantNotificationBadge: 'IMELIPWA (Inasubiri Uthibitisho wa Meneja)',

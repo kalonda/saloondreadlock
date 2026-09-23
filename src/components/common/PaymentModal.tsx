@@ -54,7 +54,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const handleQuickPasteSampleSms = () => {
     const randomRef = `MP${Math.floor(100000 + Math.random() * 900000)}TZ`;
-    const sampleMsg = `${randomRef} Imethibitishwa. TZS ${liveOrder.totalAmount.toLocaleString()} imelipwa kwa SALOON MS LUXE (Lipa Namba ${currentTillInfo.tillNumber}) tarehe ${new Date().toLocaleDateString('en-GB')}. Salio lako jipya TZS 84,200.`;
+    const sampleMsg = `${randomRef} Imethibitishwa. TZS ${liveOrder.totalAmount.toLocaleString()} imelipwa kwa DREADLOCKS AND HAIR DRESSING SALOON (Lipa Namba ${currentTillInfo.tillNumber}) tarehe ${new Date().toLocaleDateString('en-GB')}. Salio lako jipya TZS 84,200.`;
     setSmsText(sampleMsg);
     setTransactionRef(randomRef);
     setSenderName(liveOrder.customerName || 'Mteja');

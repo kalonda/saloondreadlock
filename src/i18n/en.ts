@@ -99,7 +99,7 @@ export const en = {
     cart: 'Shopping Cart'
   },
   auth: {
-    signIn: 'Sign in to Saloon MS',
+    signIn: 'Sign In',
     googleSignIn: 'Continue with Google',
     orWithCredentials: 'or log in with assigned credentials',
     username: 'Username or Phone',
@@ -174,7 +174,7 @@ export const en = {
     copyTill: 'Copy Till',
     copied: 'Copied!',
     smsProofLabel: 'Paste Official SMS Confirmation or Transaction ID:',
-    smsProofPlaceholder: 'e.g., QC8921KL90 Confirmed. TZS 35,000 paid to SALOON MS LUXE...',
+    smsProofPlaceholder: 'e.g., QC8921KL90 Confirmed. TZS 35,000 paid to DREADLOCKS AND HAIR DRESSING SALOON...',
     uploadScreenshot: 'Or Upload SMS Screenshot',
     submitPaymentProof: 'Submit Payment for Verification',
     instantNotificationBadge: 'PAID (Pending Manager Confirmation)',

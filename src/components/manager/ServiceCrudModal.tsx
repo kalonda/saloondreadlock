@@ -92,9 +92,9 @@ export const ServiceCrudModal: React.FC<ServiceCrudModalProps> = ({
       defaultPrice,
       durationMinutes: durationMinutes || 45,
       image: imageUrl,
-      descriptionSw: descSw.trim() || 'Huduma ya kitaalamu ya Saloon MS Luxe.',
-      descriptionEn: descEn.trim() || 'Professional styling service at Saloon MS Luxe.',
-      descriptionFr: 'Service professionnel haut de gamme.'
+      descriptionSw: descSw.trim() || 'Huduma ya kitaalamu ya DREADLOCKS AND HAIR DRESSING SALOON.',
+      descriptionEn: descEn.trim() || 'Professional styling service at DREADLOCKS AND HAIR DRESSING SALOON.',
+      descriptionFr: 'Service professionnel de coiffure et beauté haut de gamme.'
     };
 
     if (editingService) {
