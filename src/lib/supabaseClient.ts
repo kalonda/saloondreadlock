@@ -61,7 +61,7 @@ export const signUpWithEmail = async (email: string, password: string, name?: st
       name: name || email.split('@')[0],
       phone: phone || '+255 700 000 000',
       role,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+      avatar: undefined
     });
   }
   return data;
@@ -152,45 +152,79 @@ export const ensureManagerRegisteredInSupabase = async (): Promise<User | null> 
 };
 
 /**
- * Sync / Upsert a user profile directly to Supabase `profiles` table
+ * Sync / Update / Upsert a user profile directly to Supabase `profiles` table
  */
 export const syncProfileToSupabase = async (user: User) => {
   try {
     const userEmail = user.email || (user.username?.includes('@') ? user.username : `${user.username || user.id}@saloon.co.tz`);
     const userUsername = user.username || userEmail.split('@')[0] || user.id;
 
-    const payload: any = {
-      username: userUsername,
-      name: user.name,
-      full_name: user.name,
-      role: user.role,
-      phone: user.phone || null,
-      email: userEmail,
-      salary: user.salary ? Number(user.salary) : null,
-      specialization: user.specialization || null,
-      avatar: user.avatar || null,
-      avatar_url: user.avatar || null,
-      updated_at: new Date().toISOString()
-    };
-
-    if (user.password) {
-      payload.password = user.password;
-    }
-
+    // 1. Check if profile already exists in Supabase
+    let query = supabase.from('profiles').select('id, username, email, password').limit(1);
     if (user.id && isUUID(user.id)) {
-      payload.id = user.id;
+      query = query.or(`id.eq.${user.id},username.eq.${userUsername},email.eq.${userEmail}`);
+    } else {
+      query = query.or(`username.eq.${userUsername},email.eq.${userEmail}`);
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .upsert(payload, { onConflict: 'username' });
+    const { data: existingProfiles } = await query;
+    const existing = existingProfiles && existingProfiles.length > 0 ? existingProfiles[0] : null;
 
-    if (error) {
-      const { error: fallbackError } = await supabase
+    if (existing && existing.id) {
+      // 2. Existing profile: Perform direct UPDATE on provided fields
+      const updatePayload: any = {
+        name: user.name,
+        full_name: user.name,
+        role: user.role,
+        phone: user.phone || null,
+        email: userEmail,
+        username: userUsername,
+        salary: user.salary ? Number(user.salary) : null,
+        specialization: user.specialization || null,
+        avatar: user.avatar || null,
+        avatar_url: user.avatar || null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (user.password) {
+        updatePayload.password = user.password;
+      }
+
+      const { error: updateError } = await supabase
         .from('profiles')
-        .upsert(payload);
-      if (fallbackError) {
-        console.warn('Supabase profiles upsert warning:', fallbackError.message);
+        .update(updatePayload)
+        .eq('id', existing.id);
+
+      if (updateError) {
+        console.warn('Supabase profile update warning:', updateError.message);
+      }
+    } else {
+      // 3. New profile: Insert with safe defaults (password not-null safe)
+      const insertPayload: any = {
+        username: userUsername,
+        name: user.name,
+        full_name: user.name,
+        password: user.password || (user.role === 'manager' ? 'juanclaudio' : '123'),
+        role: user.role,
+        phone: user.phone || null,
+        email: userEmail,
+        salary: user.salary ? Number(user.salary) : null,
+        specialization: user.specialization || null,
+        avatar: user.avatar || null,
+        avatar_url: user.avatar || null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (user.id && isUUID(user.id)) {
+        insertPayload.id = user.id;
+      }
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert(insertPayload);
+
+      if (insertError) {
+        console.warn('Supabase profile insert warning:', insertError.message);
       }
     }
   } catch (err) {

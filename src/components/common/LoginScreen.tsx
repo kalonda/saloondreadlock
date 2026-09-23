@@ -66,7 +66,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           password: trimmedPass,
           phone: phone.trim() || '+255 700 000 000',
           role: trimmedUser === 'jeanclaudekalonda1@gmail.com' ? 'manager' : 'customer',
-          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80'
+          avatar: undefined
         };
 
         registerUser(newClient);
@@ -83,7 +83,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           password: trimmedPass,
           phone: phone.trim() || '+255 700 000 000',
           role: trimmedUser === 'jeanclaudekalonda1@gmail.com' ? 'manager' : 'customer',
-          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80'
+          avatar: undefined
         };
         registerUser(newClient);
         setCurrentUser(newClient);
@@ -187,7 +187,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             phone: res.user.user_metadata?.phone || '+255 700 000 000',
             role: trimmedUser === 'jeanclaudekalonda1@gmail.com' ? 'manager' : 'customer',
             username: trimmedUser.split('@')[0],
-            avatar: res.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80'
+            avatar: res.user.user_metadata?.avatar_url || undefined
           };
           registerUser(clientUser);
           setCurrentUser(clientUser);

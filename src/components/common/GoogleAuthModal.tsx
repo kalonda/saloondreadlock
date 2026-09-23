@@ -63,7 +63,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
         email: username.includes('@') ? username.trim() : undefined,
         phone: !username.includes('@') ? username.trim() : '+255 700 000 000',
         role: 'customer',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
+        avatar: undefined
       });
       onLoginSuccess();
       onClose();
@@ -89,7 +89,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
         email: 'user@gmail.com',
         phone: '+255 768 554 433',
         role: 'customer',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80'
+        avatar: undefined
       });
       onLoginSuccess();
       onClose();

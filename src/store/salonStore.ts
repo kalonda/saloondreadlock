@@ -183,6 +183,7 @@ export const refreshAllFromSupabase = async () => {
                (p.email && p.email.toLowerCase() === globalUser?.email?.toLowerCase())
         );
         if (matched) {
+          const effectiveAvatar = matched.avatar !== undefined ? matched.avatar : globalUser.avatar;
           if (
             matched.avatar !== globalUser.avatar ||
             matched.name !== globalUser.name ||
@@ -193,7 +194,8 @@ export const refreshAllFromSupabase = async () => {
           ) {
             globalUser = {
               ...globalUser,
-              ...matched
+              ...matched,
+              avatar: effectiveAvatar
             };
             changed = true;
           }
@@ -298,7 +300,7 @@ if (typeof window !== 'undefined') {
         name: session.user.user_metadata?.full_name || email.split('@')[0],
         phone: session.user.user_metadata?.phone || '+255 700 000 000',
         role: isManager ? 'manager' : 'customer',
-        avatar: session.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+        avatar: session.user.user_metadata?.avatar_url || undefined
       };
       globalUser = authenticatedUser;
       saveToLocalStorage();
@@ -657,9 +659,7 @@ export const salonStore = {
       rating: 5.0,
       reviewCount: 0,
       active: true,
-      avatar: staffData.avatar || (isManager 
-        ? 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80'
-        : 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80')
+      avatar: staffData.avatar || undefined
     };
     globalStaff = [...globalStaff, newStaff];
     saveToLocalStorage();

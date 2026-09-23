@@ -11,7 +11,7 @@ export const MANAGER_USER: User = {
   username: 'jeanclaudekalonda1@gmail.com',
   password: 'juanclaudio',
   salary: 1500000,
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+  avatar: undefined
 };
 
 export const SAMPLE_CLIENT_USER: User = {
@@ -22,7 +22,7 @@ export const SAMPLE_CLIENT_USER: User = {
   role: 'customer',
   username: 'client',
   password: '123',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+  avatar: undefined
 };
 
 export const SALON_TILL_DETAILS: SalonTillInfo[] = [
