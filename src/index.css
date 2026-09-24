@@ -2,6 +2,7 @@
 
 @layer base {
   :root {
+    color-scheme: dark;
     --primary: #8b5cf6;
     --primary-hover: #7c3aed;
     --accent-gold: #d4af37;
