@@ -23,6 +23,9 @@ import {
   Users,
   DollarSign
 } from 'lucide-react';
+import { App as CapApp } from '@capacitor/app';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { Capacitor } from '@capacitor/core';
 
 export function App() {
   const { lang, addToCart, cart, currentUser, setCurrentUser, theme } = useSalonStore();
@@ -42,6 +45,70 @@ export function App() {
 
   // Selected stylist for custom booking flow
   const [selectedStylist, setSelectedStylist] = useState<User | null>(null);
+
+  // Smoothly hide native splash screen once UI is ready
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      SplashScreen.hide({ fadeOutDuration: 400 }).catch(() => {});
+    }
+  }, []);
+
+  // Hardware Back Button & Back Gesture Management for native Android behavior
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const backPromise = CapApp.addListener('backButton', () => {
+      // 1. Dispatch custom event for child modals to intercept
+      const customEvent = new CustomEvent('saloon:backbutton', { cancelable: true });
+      window.dispatchEvent(customEvent);
+      if (customEvent.defaultPrevented) {
+        return;
+      }
+
+      // 2. Close top-level modals in App
+      if (selectedServiceForPrice) {
+        setSelectedServiceForPrice(null);
+        return;
+      }
+      if (activePaymentOrder) {
+        setActivePaymentOrder(null);
+        return;
+      }
+      if (imageLibraryTargetService) {
+        setImageLibraryTargetService(null);
+        return;
+      }
+
+      // 3. Navigate back through nested views to root
+      if (currentUser?.role === 'manager' && managerScreen !== 'overview') {
+        setManagerScreen('overview');
+        return;
+      }
+      if (currentUser?.role === 'staff' && staffScreen !== 'jobs') {
+        setStaffScreen('jobs');
+        return;
+      }
+      if (currentUser?.role === 'customer' && currentTab !== 'services') {
+        setCurrentTab('services');
+        return;
+      }
+
+      // 4. Exit app if at root
+      CapApp.exitApp();
+    });
+
+    return () => {
+      backPromise.then(l => l.remove()).catch(() => {});
+    };
+  }, [
+    selectedServiceForPrice,
+    activePaymentOrder,
+    imageLibraryTargetService,
+    currentUser?.role,
+    managerScreen,
+    staffScreen,
+    currentTab
+  ]);
 
   // Auto-route tab when user logs in or role changes
   useEffect(() => {

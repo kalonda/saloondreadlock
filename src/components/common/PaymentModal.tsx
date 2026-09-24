@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Loader2
 } from 'lucide-react';
+import { useBackButton } from '../../hooks/useBackButton';
 
 interface PaymentModalProps {
   order: Order | null;
@@ -30,6 +31,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const { lang, submitPaymentProof, orders, tillDetails } = useSalonStore();
   const t = getTranslation(lang);
+  useBackButton(isOpen, onClose);
 
   const [selectedProvider, setSelectedProvider] = useState<MobileMoneyProvider>('mpesa');
   const [copiedTill, setCopiedTill] = useState(false);

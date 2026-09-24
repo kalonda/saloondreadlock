@@ -1,10 +1,15 @@
-import { Order, User, SalonTillInfo } from '../types';
+import { Order, SalonTillInfo } from '../types';
 import { formatCurrency } from '../i18n';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 /**
- * Utility to download CSV files in browser with UTF-8 BOM
+ * Utility to download or share CSV files on Android (via Native Share/Save) and Web browsers (via Blob download)
  */
-export const exportToCsv = (filename: string, headers: string[], rows: (string | number)[][]) => {
+export const exportToCsv = async (filename: string, headers: string[], rows: (string | number)[][]) => {
   const processRow = (row: (string | number)[]) => {
     return row.map(val => {
       const strVal = val === null || val === undefined ? '' : String(val);
@@ -18,11 +23,36 @@ export const exportToCsv = (filename: string, headers: string[], rows: (string |
     ...rows.map(r => processRow(r))
   ].join('\r\n');
 
+  const cleanFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+
+  // Native Android / iOS saving & sharing
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const fileResult = await Filesystem.writeFile({
+        path: cleanFilename,
+        data: csvContent,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8
+      });
+
+      await Share.share({
+        title: filename,
+        text: `Ripoti ya Saluni: ${cleanFilename}`,
+        url: fileResult.uri,
+        dialogTitle: 'Hifadhi au Shiriki CSV'
+      });
+      return;
+    } catch (err) {
+      console.error('Native CSV export/share error, falling back:', err);
+    }
+  }
+
+  // Web Browser fallback
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', filename.endsWith('.csv') ? filename : `${filename}.csv`);
+  link.setAttribute('download', cleanFilename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -46,421 +76,250 @@ export interface PrintableReportConfig {
 }
 
 /**
- * Opens a print dialog to save as PDF or print report
+ * Generates a PDF Report and saves/shares on Android phone or downloads on Web
  */
-export const printPdfReport = (config: PrintableReportConfig) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Tafadhali ruhusu pop-up ili kufungua ripoti.');
-    return;
-  }
-
+export const printPdfReport = async (config: PrintableReportConfig) => {
   const currentDateStr = new Date().toLocaleString('sw-TZ', {
     dateStyle: 'medium',
     timeStyle: 'short'
   });
 
-  const statsHtml = config.stats && config.stats.length > 0
-    ? `<div class="stats-grid">
-        ${config.stats.map(s => `
-          <div class="stat-card">
-            <div class="stat-label">${s.label}</div>
-            <div class="stat-value">${s.value}</div>
-          </div>
-        `).join('')}
-      </div>`
-    : '';
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
 
-  const tableHeaderHtml = `
-    <tr>
-      ${config.headers.map(h => `<th>${h}</th>`).join('')}
-    </tr>
-  `;
+  // Purple luxury header banner
+  doc.setFillColor(124, 58, 237); // #7c3aed
+  doc.rect(0, 0, 210, 24, 'F');
 
-  const tableBodyHtml = config.rows.length > 0
-    ? config.rows.map((row, idx) => `
-        <tr class="${idx % 2 === 0 ? 'even' : 'odd'}">
-          ${row.map(cell => `<td>${cell}</td>`).join('')}
-        </tr>
-      `).join('')
-    : `<tr><td colspan="${config.headers.length}" style="text-align: center; color: #888;">Hakuna taarifa za kuonyesha.</td></tr>`;
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DREADLOCKS AND HAIR DRESSING SALOON', 14, 11);
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="sw">
-    <head>
-      <meta charset="utf-8" />
-      <title>${config.title} - DREADLOCKS AND HAIR DRESSING SALOON</title>
-      <style>
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        body {
-          color: #1e293b;
-          background: #ffffff;
-          padding: 24px;
-          font-size: 12px;
-          line-height: 1.4;
-        }
-        .header {
-          border-bottom: 2px solid #8b5cf6;
-          padding-bottom: 14px;
-          margin-bottom: 18px;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-        }
-        .brand-title {
-          font-size: 18px;
-          font-weight: 800;
-          color: #5b21b6;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .report-title {
-          font-size: 15px;
-          font-weight: 700;
-          color: #0f172a;
-          margin-top: 4px;
-        }
-        .meta-info {
-          font-size: 11px;
-          color: #64748b;
-          text-align: right;
-        }
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-          gap: 10px;
-          margin-bottom: 18px;
-        }
-        .stat-card {
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 10px 12px;
-        }
-        .stat-label {
-          font-size: 10px;
-          color: #64748b;
-          text-transform: uppercase;
-          font-weight: 600;
-          margin-bottom: 4px;
-        }
-        .stat-value {
-          font-size: 15px;
-          font-weight: 800;
-          color: #5b21b6;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 20px;
-        }
-        th {
-          background: #f1f5f9;
-          color: #334155;
-          font-weight: 700;
-          text-align: left;
-          padding: 8px 10px;
-          border-bottom: 2px solid #cbd5e1;
-          font-size: 11px;
-          text-transform: uppercase;
-        }
-        td {
-          padding: 8px 10px;
-          border-bottom: 1px solid #e2e8f0;
-          font-size: 11px;
-        }
-        tr.even {
-          background: #ffffff;
-        }
-        tr.odd {
-          background: #f8fafc;
-        }
-        .footer {
-          margin-top: 24px;
-          padding-top: 12px;
-          border-top: 1px dashed #cbd5e1;
-          display: flex;
-          justify-content: space-between;
-          font-size: 10px;
-          color: #94a3b8;
-        }
-        .print-btn-bar {
-          margin-bottom: 16px;
-          text-align: right;
-        }
-        .print-btn {
-          background: #7c3aed;
-          color: #fff;
-          border: none;
-          padding: 8px 16px;
-          font-weight: 700;
-          font-size: 12px;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-        @media print {
-          .print-btn-bar {
-            display: none;
-          }
-          body {
-            padding: 0;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="print-btn-bar">
-        <button class="print-btn" onclick="window.print()">🖨️ Chapisha / Hifadhi kama PDF</button>
-      </div>
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Mfumo Rasmi wa Usimamizi na Ripoti za Biashara', 14, 17);
 
-      <div class="header">
-        <div>
-          <div class="brand-title">DREADLOCKS AND HAIR DRESSING SALOON</div>
-          <div class="report-title">${config.title}</div>
-          ${config.subtitle ? `<div style="font-size: 12px; color: #64748b; margin-top: 2px;">${config.subtitle}</div>` : ''}
-        </div>
-        <div class="meta-info">
-          <div><strong>Kipindi:</strong> ${config.periodLabel || 'Kazi Zote'}</div>
-          <div><strong>Tarehe ya Kutolewa:</strong> ${currentDateStr}</div>
-          ${config.managerOrStaffName ? `<div><strong>Mhusika:</strong> ${config.managerOrStaffName}</div>` : ''}
-        </div>
-      </div>
+  // Title & Subtitle
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text(config.title, 14, 34);
 
-      ${statsHtml}
+  let currentY = 40;
+  if (config.subtitle) {
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(config.subtitle, 14, currentY);
+    currentY += 6;
+  }
 
-      <table>
-        <thead>
-          ${tableHeaderHtml}
-        </thead>
-        <tbody>
-          ${tableBodyHtml}
-        </tbody>
-      </table>
+  // Meta Information Bar
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  const metaText = `Kipindi: ${config.periodLabel || 'Kazi Zote'}   |   Tarehe: ${currentDateStr}${config.managerOrStaffName ? `   |   Mhusika: ${config.managerOrStaffName}` : ''}`;
+  doc.text(metaText, 14, currentY);
+  currentY += 7;
 
-      <div class="footer">
-        <div>${config.footerNote || 'DREADLOCKS AND HAIR DRESSING SALOON • Mfumo Rasmi wa Usimamizi'}</div>
-        <div>Ukurasa 1 / 1 • Imetolewa Kiotomatiki</div>
-      </div>
+  // Stat summary cards
+  if (config.stats && config.stats.length > 0) {
+    const cardWidth = Math.min(56, (182 / config.stats.length) - 3);
+    config.stats.forEach((s, idx) => {
+      const x = 14 + idx * (cardWidth + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, currentY, cardWidth, 15, 2, 2, 'FD');
 
-      <script>
-        window.addEventListener('load', () => {
-          setTimeout(() => {
-            window.print();
-          }, 300);
-        });
-      </script>
-    </body>
-    </html>
-  `;
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 116, 139);
+      doc.text(String(s.label).toUpperCase(), x + 3, currentY + 4.5);
 
-  printWindow.document.write(html);
-  printWindow.document.close();
+      doc.setFontSize(10.5);
+      doc.setTextColor(124, 58, 237);
+      doc.text(String(s.value), x + 3, currentY + 11.5);
+    });
+    currentY += 20;
+  }
+
+  // Data Table
+  autoTable(doc, {
+    startY: currentY,
+    head: [config.headers],
+    body: config.rows.map(r => r.map(c => String(c ?? ''))),
+    theme: 'grid',
+    headStyles: {
+      fillColor: [124, 58, 237],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: [30, 41, 59]
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252]
+    },
+    margin: { left: 14, right: 14 },
+    foot: [[config.footerNote || 'DREADLOCKS AND HAIR DRESSING SALOON • Imetolewa Kiotomatiki', ...Array(config.headers.length - 1).fill('')]],
+    footStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [100, 116, 139],
+      fontSize: 7.5,
+      fontStyle: 'normal'
+    }
+  });
+
+  const cleanFilename = `${config.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
+
+  // Native Android / iOS saving & sharing
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      const fileResult = await Filesystem.writeFile({
+        path: cleanFilename,
+        data: pdfBase64,
+        directory: Directory.Cache
+      });
+
+      await Share.share({
+        title: config.title,
+        text: `Ripoti ya Saluni: ${config.title}`,
+        url: fileResult.uri,
+        dialogTitle: 'Hifadhi au Shiriki PDF'
+      });
+      return;
+    } catch (err) {
+      console.error('Native PDF save/share error, falling back:', err);
+    }
+  }
+
+  // Web Browser fallback: Download PDF
+  try {
+    doc.save(cleanFilename);
+  } catch (err) {
+    console.error('PDF download error:', err);
+  }
 };
 
 /**
- * Print individual customer receipt
+ * Print or Save individual customer receipt (Native Share sheet on Android, PDF download on web)
  */
-export const printCustomerReceipt = (order: Order, tillDetails?: SalonTillInfo[]) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Tafadhali ruhusu pop-up ili kufungua risiti.');
-    return;
+export const printCustomerReceipt = async (order: Order, tillDetails?: SalonTillInfo[]) => {
+  const till = tillDetails?.find(t => t.provider === order.paymentProvider) || tillDetails?.[0];
+  const dateStr = new Date(order.createdAt).toLocaleString('sw-TZ');
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [105, 170] // Receipt card format
+  });
+
+  // Purple top header
+  doc.setFillColor(124, 58, 237);
+  doc.rect(0, 0, 105, 16, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DREADLOCKS & SALOON', 52.5, 7.5, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Risiti Rasmi ya Huduma', 52.5, 12.5, { align: 'center' });
+
+  // Receipt details
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`#${order.bookingCode}`, 52.5, 25, { align: 'center' });
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(dateStr, 52.5, 30, { align: 'center' });
+
+  doc.setDrawColor(203, 213, 225);
+  doc.line(8, 34, 97, 34);
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(8);
+  doc.text(`Mteja: ${order.customerName}`, 8, 40);
+  doc.text(`Simu: ${order.customerPhone}`, 8, 45);
+  if (order.assignedStaffName) {
+    doc.text(`Fundi: ${order.assignedStaffName}`, 8, 50);
+  }
+  doc.text(`Hali ya Oda: ${order.status.toUpperCase()}`, 8, order.assignedStaffName ? 55 : 50);
+
+  let curY = order.assignedStaffName ? 61 : 56;
+  doc.line(8, curY - 2, 97, curY - 2);
+
+  // Items table
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text('HUDUMA', 8, curY + 2);
+  doc.text('BEI', 97, curY + 2, { align: 'right' });
+  curY += 6;
+
+  doc.setFont('helvetica', 'normal');
+  order.items.forEach(item => {
+    doc.text(`${item.nameSw} (x${item.count})`, 8, curY);
+    doc.text(formatCurrency(item.selectedPrice * item.count), 97, curY, { align: 'right' });
+    curY += 5;
+  });
+
+  doc.line(8, curY + 1, 97, curY + 1);
+  curY += 6;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(124, 58, 237);
+  doc.text('JUMLA KUU:', 8, curY);
+  doc.text(formatCurrency(order.totalAmount), 97, curY, { align: 'right' });
+  curY += 7;
+
+  if (till) {
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Lipa Namba: ${till.tillNumber} (${till.name})`, 52.5, curY, { align: 'center' });
+    curY += 5;
   }
 
-  const till = tillDetails?.find(t => t.provider === order.paymentProvider) || tillDetails?.[0];
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Asante kwa kuchagua huduma zetu! Karibu tena.', 52.5, curY + 4, { align: 'center' });
 
-  const html = `
-    <!DOCTYPE html>
-    <html lang="sw">
-    <head>
-      <meta charset="utf-8" />
-      <title>Risiti ya Oda #${order.bookingCode} - DREADLOCKS AND HAIR DRESSING SALOON</title>
-      <style>
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
-        }
-        body {
-          background: #ffffff;
-          color: #0f172a;
-          padding: 24px;
-          display: flex;
-          justify-content: center;
-        }
-        .receipt-card {
-          width: 340px;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 20px;
-          background: #ffffff;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-        .header {
-          text-align: center;
-          border-bottom: 2px dashed #cbd5e1;
-          padding-bottom: 12px;
-          margin-bottom: 12px;
-        }
-        .salon-name {
-          font-size: 13px;
-          font-weight: 800;
-          color: #5b21b6;
-        }
-        .receipt-badge {
-          display: inline-block;
-          font-size: 10px;
-          font-weight: 700;
-          text-transform: uppercase;
-          padding: 3px 8px;
-          background: #f1f5f9;
-          border-radius: 4px;
-          margin-top: 6px;
-        }
-        .code-box {
-          font-size: 20px;
-          font-weight: 900;
-          letter-spacing: 1px;
-          color: #1e293b;
-          margin: 8px 0;
-        }
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 11px;
-          margin-bottom: 6px;
-          color: #475569;
-        }
-        .info-row strong {
-          color: #0f172a;
-        }
-        .items-section {
-          border-top: 1px dashed #cbd5e1;
-          border-bottom: 1px dashed #cbd5e1;
-          padding: 10px 0;
-          margin: 10px 0;
-        }
-        .item-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 11px;
-          margin-bottom: 4px;
-        }
-        .total-box {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 14px;
-          font-weight: 900;
-          color: #5b21b6;
-          padding: 8px 0;
-        }
-        .footer {
-          text-align: center;
-          font-size: 10px;
-          color: #94a3b8;
-          margin-top: 14px;
-          border-top: 1px dashed #e2e8f0;
-          padding-top: 10px;
-        }
-        .print-btn-bar {
-          margin-bottom: 14px;
-          text-align: center;
-        }
-        .print-btn {
-          background: #7c3aed;
-          color: #fff;
-          border: none;
-          padding: 8px 16px;
-          font-weight: 700;
-          font-size: 12px;
-          border-radius: 6px;
-          cursor: pointer;
-        }
-        @media print {
-          .print-btn-bar { display: none; }
-          body { padding: 0; }
-          .receipt-card { border: none; box-shadow: none; width: 100%; }
-        }
-      </style>
-    </head>
-    <body>
-      <div>
-        <div class="print-btn-bar">
-          <button class="print-btn" onclick="window.print()">🖨️ Chapisha Risiti</button>
-        </div>
-        <div class="receipt-card">
-          <div class="header">
-            <div class="salon-name">DREADLOCKS AND HAIR DRESSING SALOON</div>
-            <div class="receipt-badge">Risiti Rasmi ya Huduma</div>
-            <div class="code-box">#${order.bookingCode}</div>
-            <div style="font-size: 10px; color: #64748b;">${new Date(order.createdAt).toLocaleString('sw-TZ')}</div>
-          </div>
+  const cleanFilename = `Risiti_${order.bookingCode}.pdf`;
 
-          <div class="info-row">
-            <span>Mteja:</span>
-            <strong>${order.customerName}</strong>
-          </div>
-          <div class="info-row">
-            <span>Simu:</span>
-            <strong>${order.customerPhone}</strong>
-          </div>
-          ${order.assignedStaffName ? `
-            <div class="info-row">
-              <span>Fundi Aliyepewa:</span>
-              <strong>${order.assignedStaffName}</strong>
-            </div>
-          ` : ''}
-          <div class="info-row">
-            <span>Hali ya Oda:</span>
-            <strong>${order.status.toUpperCase()}</strong>
-          </div>
+  // Native Android / iOS saving & sharing
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      const fileResult = await Filesystem.writeFile({
+        path: cleanFilename,
+        data: pdfBase64,
+        directory: Directory.Cache
+      });
 
-          <div class="items-section">
-            ${order.items.map(item => `
-              <div class="item-row">
-                <span>${item.nameSw} (x${item.count})</span>
-                <strong>${formatCurrency(item.selectedPrice * item.count)}</strong>
-              </div>
-            `).join('')}
-          </div>
+      await Share.share({
+        title: `Risiti ya Oda #${order.bookingCode}`,
+        text: `Risiti ya Saluni - Oda #${order.bookingCode}`,
+        url: fileResult.uri,
+        dialogTitle: 'Hifadhi au Shiriki Risiti'
+      });
+      return;
+    } catch (err) {
+      console.error('Native receipt save/share error, falling back:', err);
+    }
+  }
 
-          <div class="total-box">
-            <span>JUMLA KUU:</span>
-            <span>${formatCurrency(order.totalAmount)}</span>
-          </div>
-
-          ${till ? `
-            <div class="info-row" style="margin-top: 6px; font-size: 10px;">
-              <span>Lipa Namba:</span>
-              <strong>${till.tillNumber} (${till.name})</strong>
-            </div>
-          ` : ''}
-
-          <div class="footer">
-            <p>Asante kwa kuchagua huduma zetu!</p>
-            <p>Karibu Tena • DREADLOCKS & HAIR DRESSING</p>
-          </div>
-        </div>
-      </div>
-      <script>
-        window.addEventListener('load', () => {
-          setTimeout(() => {
-            window.print();
-          }, 300);
-        });
-      </script>
-    </body>
-    </html>
-  `;
-
-  printWindow.document.write(html);
-  printWindow.document.close();
+  // Web Browser fallback
+  try {
+    doc.save(cleanFilename);
+  } catch (err) {
+    console.error('Receipt download error:', err);
+  }
 };

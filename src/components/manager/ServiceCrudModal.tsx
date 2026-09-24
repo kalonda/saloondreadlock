@@ -13,6 +13,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { AndroidSuccessModal } from '../common/AndroidSuccessModal';
+import { useBackButton } from '../../hooks/useBackButton';
 
 interface ServiceCrudModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const ServiceCrudModal: React.FC<ServiceCrudModalProps> = ({
   onOpenImageLibrary
 }) => {
   const { lang, addService, updateService, deleteService } = useSalonStore();
+  useBackButton(isOpen, onClose);
   const t = getTranslation(lang);
 
   const [nameSw, setNameSw] = useState('');

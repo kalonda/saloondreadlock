@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 import { uploadSalonImageToSupabase } from '../../lib/supabaseClient';
+import { useBackButton } from '../../hooks/useBackButton';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface UserProfileModalProps {
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
   const { lang, currentUser, updateUserProfile } = useSalonStore();
   const t = getTranslation(lang);
+  useBackButton(isOpen, onClose);
 
   const [name, setName] = useState(currentUser?.name || '');
   const [username, setUsername] = useState(currentUser?.username || '');

@@ -4,6 +4,7 @@ import { useSalonStore } from '../../store/salonStore';
 import { getTranslation, formatCurrency } from '../../i18n';
 import { X, UserPlus, Edit3, Trash2, ShieldCheck, Check, Sparkles, Upload, Loader2 } from 'lucide-react';
 import { uploadSalonImageToSupabase } from '../../lib/supabaseClient';
+import { useBackButton } from '../../hooks/useBackButton';
 
 interface StaffCrudModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
 }) => {
   const { lang, createStaff, updateStaff, deleteStaff } = useSalonStore();
   const t = getTranslation(lang);
+  useBackButton(isOpen, onClose);
   const [isUploading, setIsUploading] = useState(false);
 
   const [role, setRole] = useState<UserRole>('staff');

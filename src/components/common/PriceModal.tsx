@@ -3,6 +3,7 @@ import { ServiceItem } from '../../types';
 import { useSalonStore } from '../../store/salonStore';
 import { getTranslation, formatCurrency } from '../../i18n';
 import { X, Sparkles, Check, Sliders, DollarSign } from 'lucide-react';
+import { useBackButton } from '../../hooks/useBackButton';
 
 interface PriceModalProps {
   service: ServiceItem | null;
@@ -14,6 +15,7 @@ interface PriceModalProps {
 export const PriceModal: React.FC<PriceModalProps> = ({ service, isOpen, onClose, onConfirm }) => {
   const { lang } = useSalonStore();
   const t = getTranslation(lang);
+  useBackButton(isOpen, onClose);
 
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);

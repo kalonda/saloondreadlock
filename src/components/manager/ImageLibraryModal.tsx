@@ -13,6 +13,7 @@ import {
   Trash2, 
   Loader2
 } from 'lucide-react';
+import { useBackButton } from '../../hooks/useBackButton';
 
 interface ImageLibraryModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const ImageLibraryModal: React.FC<ImageLibraryModalProps> = ({
 }) => {
   const { lang, gallery, addImageToGallery, deleteGalleryImage, updateServiceImage } = useSalonStore();
   const t = getTranslation(lang);
+  useBackButton(isOpen, onClose);
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
