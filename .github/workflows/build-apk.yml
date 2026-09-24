@@ -24,11 +24,14 @@ jobs:
         run: |
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: 'npm'
+
+      - name: Check Node Version
+        run: node -v && npm -v
 
       - name: Install Dependencies
         run: npm ci
