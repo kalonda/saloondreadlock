@@ -113,7 +113,7 @@ export const ensureManagerRegisteredInSupabase = async (): Promise<User | null> 
         username: existingManager.username || managerUsername,
         password: existingManager.password || managerPass,
         salary: existingManager.salary ? Number(existingManager.salary) : 1500000,
-        avatar: existingManager.avatar || existingManager.avatar_url || undefined
+        avatar: (existingManager.avatar && !existingManager.avatar.includes('unsplash.com')) ? existingManager.avatar : undefined
       };
     }
 
@@ -263,7 +263,7 @@ export const fetchProfilesFromSupabase = async (): Promise<User[]> => {
       password: p.password || '123',
       phone: p.phone || '+255 700 000 000',
       role: (p.role === 'manager' || p.role === 'staff' || p.role === 'customer') ? p.role : 'customer',
-      avatar: p.avatar || p.avatar_url || undefined,
+      avatar: (p.avatar && !p.avatar.includes('unsplash.com')) ? p.avatar : undefined,
       specialization: p.specialization || undefined,
       salary: p.salary ? Number(p.salary) : undefined,
       active: true

@@ -74,11 +74,21 @@ export const StaffShowcase: React.FC<StaffShowcaseProps> = ({
                 {/* Avatar & Rating */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="relative">
-                    <img
-                      src={staff.avatar}
-                      alt={staff.name}
-                      className="w-20 h-20 rounded-2xl object-cover border-2 border-purple-500/40 shadow-lg"
-                    />
+                    {staff.avatar ? (
+                      <img
+                        src={staff.avatar}
+                        alt={staff.name}
+                        className="w-20 h-20 rounded-2xl object-cover border-2 border-purple-500/40 shadow-lg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.parentElement?.querySelector('.staff-showcase-fallback');
+                          if (fallback) fallback.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-20 h-20 rounded-2xl bg-gradient-to-tr from-purple-700 to-indigo-600 border-2 border-purple-500/40 shadow-lg flex items-center justify-center text-white font-black text-2xl ${staff.avatar ? 'staff-showcase-fallback hidden' : ''}`}>
+                      {staff.name.charAt(0).toUpperCase()}
+                    </div>
                     <span className="absolute -bottom-1.5 -right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-900" title={t.app.activeOnDuty} />
                   </div>
 

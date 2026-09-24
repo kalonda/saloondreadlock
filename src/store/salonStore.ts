@@ -183,9 +183,12 @@ export const refreshAllFromSupabase = async () => {
                (p.email && p.email.toLowerCase() === globalUser?.email?.toLowerCase())
         );
         if (matched) {
-          const effectiveAvatar = matched.avatar !== undefined ? matched.avatar : globalUser.avatar;
+          const remoteCleanAvatar = (matched.avatar && !matched.avatar.includes('unsplash.com')) ? matched.avatar : undefined;
+          const localCleanAvatar = (globalUser.avatar && !globalUser.avatar.includes('unsplash.com')) ? globalUser.avatar : undefined;
+          const effectiveAvatar = remoteCleanAvatar || localCleanAvatar || undefined;
+
           if (
-            matched.avatar !== globalUser.avatar ||
+            effectiveAvatar !== globalUser.avatar ||
             matched.name !== globalUser.name ||
             matched.phone !== globalUser.phone ||
             matched.role !== globalUser.role ||

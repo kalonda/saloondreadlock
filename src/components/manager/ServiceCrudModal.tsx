@@ -49,34 +49,39 @@ export const ServiceCrudModal: React.FC<ServiceCrudModalProps> = ({
   const [successTitle, setSuccessTitle] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const prevIsOpenRef = React.useRef(false);
+
   useEffect(() => {
-    if (editingService) {
-      setNameSw(editingService.nameSw);
-      setNameEn(editingService.nameEn);
-      setNameFr(editingService.nameFr);
-      setCategory(editingService.category);
-      setPriceType(editingService.priceType);
-      setMinPrice(editingService.minPrice);
-      setMaxPrice(editingService.maxPrice);
-      setDefaultPrice(editingService.defaultPrice);
-      setDurationMinutes(editingService.durationMinutes);
-      setImageUrl(editingService.image);
-      setDescSw(editingService.descriptionSw);
-      setDescEn(editingService.descriptionEn);
-    } else {
-      setNameSw('');
-      setNameEn('');
-      setNameFr('');
-      setCategory('braids');
-      setPriceType('fixed');
-      setMinPrice(10000);
-      setMaxPrice(10000);
-      setDefaultPrice(10000);
-      setDurationMinutes(60);
-      setImageUrl('https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80');
-      setDescSw('');
-      setDescEn('');
+    if (isOpen && !prevIsOpenRef.current) {
+      if (editingService) {
+        setNameSw(editingService.nameSw);
+        setNameEn(editingService.nameEn);
+        setNameFr(editingService.nameFr);
+        setCategory(editingService.category);
+        setPriceType(editingService.priceType);
+        setMinPrice(editingService.minPrice);
+        setMaxPrice(editingService.maxPrice);
+        setDefaultPrice(editingService.defaultPrice);
+        setDurationMinutes(editingService.durationMinutes);
+        setImageUrl(editingService.image);
+        setDescSw(editingService.descriptionSw);
+        setDescEn(editingService.descriptionEn);
+      } else {
+        setNameSw('');
+        setNameEn('');
+        setNameFr('');
+        setCategory('braids');
+        setPriceType('fixed');
+        setMinPrice(10000);
+        setMaxPrice(10000);
+        setDefaultPrice(10000);
+        setDurationMinutes(60);
+        setImageUrl('https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80');
+        setDescSw('');
+        setDescEn('');
+      }
     }
+    prevIsOpenRef.current = isOpen;
   }, [editingService, isOpen]);
 
   const handleDirectFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

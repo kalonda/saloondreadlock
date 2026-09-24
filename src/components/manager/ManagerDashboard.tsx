@@ -988,7 +988,7 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                   {assignedJobs.map((ord) => {
                     const assignedStaff = staffList.find(s => s.id === ord.assignedStaffId);
-                    const staffAvatar = ord.assignedStaffAvatar || assignedStaff?.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80';
+                    const staffAvatar = ord.assignedStaffAvatar || assignedStaff?.avatar;
                     const staffName = ord.assignedStaffName || assignedStaff?.name || 'Haijapangiwa';
 
                     return (
@@ -999,11 +999,21 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
                         {/* Header: Staff Info & Status */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2.5">
-                            <img 
-                              src={staffAvatar} 
-                              alt={staffName} 
-                              className="w-9 h-9 rounded-xl object-cover border border-purple-500/40 shrink-0" 
-                            />
+                            {staffAvatar ? (
+                              <img 
+                                src={staffAvatar} 
+                                alt={staffName} 
+                                className="w-9 h-9 rounded-xl object-cover border border-purple-500/40 shrink-0" 
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget.parentElement?.querySelector('.staff-avatar-fallback');
+                                  if (fallback) fallback.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={`w-9 h-9 rounded-xl bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 font-bold text-xs shrink-0 ${staffAvatar ? 'staff-avatar-fallback hidden' : ''}`}>
+                              {staffName.charAt(0).toUpperCase()}
+                            </div>
                             <div>
                               <span className="text-xs font-bold text-white block leading-tight">
                                 {staffName}

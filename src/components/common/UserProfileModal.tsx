@@ -44,19 +44,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
+  const prevIsOpenRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (currentUser && isOpen) {
+    if (isOpen && !prevIsOpenRef.current && currentUser) {
       setName(currentUser.name || '');
       setUsername(currentUser.username || '');
       setPhone(currentUser.phone || '');
-      setAvatar(currentUser.avatar);
+      setAvatar(currentUser.avatar && !currentUser.avatar.includes('unsplash.com') ? currentUser.avatar : undefined);
       setShowPasswordSection(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setPasswordError('');
     }
-  }, [currentUser, isOpen]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, currentUser]);
 
   if (!isOpen || !currentUser) return null;
 

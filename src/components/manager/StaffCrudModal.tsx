@@ -31,29 +31,33 @@ export const StaffCrudModal: React.FC<StaffCrudModalProps> = ({
   const [salary, setSalary] = useState('450000');
   const [avatar, setAvatar] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const prevIsOpenRef = React.useRef(false);
 
   useEffect(() => {
-    if (editingStaff) {
-      setRole(editingStaff.role || 'staff');
-      setName(editingStaff.name || '');
-      setPhone(editingStaff.phone || '');
-      setUsername(editingStaff.username || '');
-      setPassword(editingStaff.password || '123');
-      setSpecialization(editingStaff.specialization || '');
-      setSalary(String(editingStaff.salary || (editingStaff.role === 'manager' ? 850000 : 450000)));
-      setAvatar(editingStaff.avatar || '');
-      setShowDeleteConfirm(false);
-    } else {
-      setRole('staff');
-      setName('');
-      setPhone('');
-      setUsername('');
-      setPassword('123');
-      setSpecialization('Knotless Braids, Weaving & Styling');
-      setSalary('450000');
-      setAvatar('');
-      setShowDeleteConfirm(false);
+    if (isOpen && !prevIsOpenRef.current) {
+      if (editingStaff) {
+        setRole(editingStaff.role || 'staff');
+        setName(editingStaff.name || '');
+        setPhone(editingStaff.phone || '');
+        setUsername(editingStaff.username || '');
+        setPassword(editingStaff.password || '123');
+        setSpecialization(editingStaff.specialization || '');
+        setSalary(String(editingStaff.salary || (editingStaff.role === 'manager' ? 850000 : 450000)));
+        setAvatar((editingStaff.avatar && !editingStaff.avatar.includes('unsplash.com')) ? editingStaff.avatar : '');
+        setShowDeleteConfirm(false);
+      } else {
+        setRole('staff');
+        setName('');
+        setPhone('');
+        setUsername('');
+        setPassword('123');
+        setSpecialization('Knotless Braids, Weaving & Styling');
+        setSalary('450000');
+        setAvatar('');
+        setShowDeleteConfirm(false);
+      }
     }
+    prevIsOpenRef.current = isOpen;
   }, [editingStaff, isOpen]);
 
   if (!isOpen) return null;

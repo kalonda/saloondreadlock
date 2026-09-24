@@ -41,30 +41,34 @@ export const OrderCrudModal: React.FC<OrderCrudModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [notes, setNotes] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const prevIsOpenRef = React.useRef(false);
 
   useEffect(() => {
-    if (orderToEdit) {
-      setCustomerName(orderToEdit.customerName || '');
-      setCustomerPhone(orderToEdit.customerPhone || '');
-      setSelectedServiceId(orderToEdit.items[0]?.serviceId || services[0]?.id || '');
-      setCustomPrice(orderToEdit.totalAmount || 15000);
-      setAssignedStaffId(orderToEdit.assignedStaffId || '');
-      setStatus(orderToEdit.status || 'confirmed');
-      setPaymentMethod(orderToEdit.paymentMethod || 'cash');
-      setNotes(orderToEdit.notes || '');
-      setShowDeleteConfirm(false);
-    } else {
-      setCustomerName('');
-      setCustomerPhone('');
-      const defaultSrv = services[0];
-      setSelectedServiceId(defaultSrv?.id || '');
-      setCustomPrice(defaultSrv?.defaultPrice || 15000);
-      setAssignedStaffId('');
-      setStatus('in_progress');
-      setPaymentMethod('cash');
-      setNotes('');
-      setShowDeleteConfirm(false);
+    if (isOpen && !prevIsOpenRef.current) {
+      if (orderToEdit) {
+        setCustomerName(orderToEdit.customerName || '');
+        setCustomerPhone(orderToEdit.customerPhone || '');
+        setSelectedServiceId(orderToEdit.items[0]?.serviceId || services[0]?.id || '');
+        setCustomPrice(orderToEdit.totalAmount || 15000);
+        setAssignedStaffId(orderToEdit.assignedStaffId || '');
+        setStatus(orderToEdit.status || 'confirmed');
+        setPaymentMethod(orderToEdit.paymentMethod || 'cash');
+        setNotes(orderToEdit.notes || '');
+        setShowDeleteConfirm(false);
+      } else {
+        setCustomerName('');
+        setCustomerPhone('');
+        const defaultSrv = services[0];
+        setSelectedServiceId(defaultSrv?.id || '');
+        setCustomPrice(defaultSrv?.defaultPrice || 15000);
+        setAssignedStaffId('');
+        setStatus('in_progress');
+        setPaymentMethod('cash');
+        setNotes('');
+        setShowDeleteConfirm(false);
+      }
     }
+    prevIsOpenRef.current = isOpen;
   }, [orderToEdit, services, isOpen]);
 
   if (!isOpen) return null;

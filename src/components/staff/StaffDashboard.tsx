@@ -72,7 +72,7 @@ export const StaffDashboard: React.FC<StaffDashboardProps> = ({
     staffList[0] || {
       id: currentUser?.id || 'staff-me',
       name: currentUser?.name || 'Stylist',
-      avatar: currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+      avatar: currentUser?.avatar || undefined,
       role: 'staff' as const,
       salary: 500000,
       specialization: 'Dreadlocks & Braids'

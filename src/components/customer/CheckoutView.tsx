@@ -144,11 +144,21 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           {selectedStylist && (
             <div className="p-4 rounded-2xl bg-purple-950/30 border border-purple-800/40 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <img 
-                  src={selectedStylist.avatar} 
-                  alt={selectedStylist.name} 
-                  className="w-12 h-12 rounded-xl object-cover border border-purple-500/30"
-                />
+                {selectedStylist.avatar ? (
+                  <img 
+                    src={selectedStylist.avatar} 
+                    alt={selectedStylist.name} 
+                    className="w-12 h-12 rounded-xl object-cover border border-purple-500/30 shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.parentElement?.querySelector('.checkout-stylist-fallback');
+                      if (fallback) fallback.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`w-12 h-12 rounded-xl bg-purple-600/30 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold text-sm shrink-0 ${selectedStylist.avatar ? 'checkout-stylist-fallback hidden' : ''}`}>
+                  {selectedStylist.name.charAt(0).toUpperCase()}
+                </div>
                 <div>
                   <span className="text-[10px] text-purple-300 uppercase font-bold tracking-wider block">Mhudumu Uliyemchagua:</span>
                   <span className="text-sm font-bold text-white">{selectedStylist.name}</span>
